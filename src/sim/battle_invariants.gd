@@ -6,11 +6,13 @@ extends RefCounted
 var _controller: BattleController
 var _expected_total: int = 0
 var _ended_count: int = 0
+var _last_potion_count: int = 0
 
 
 func _init(controller: BattleController) -> void:
 	_controller = controller
 	_expected_total = controller.deck.total_count()
+	_last_potion_count = controller.potions.count()
 	controller.battle_ended.connect(_on_battle_ended)
 
 
@@ -46,6 +48,12 @@ func check() -> Array[String]:
 		violations.append("hàng đợi trigger còn %d hành động khi nghỉ" % c.trigger_queue_size())
 	if c.trigger_overflowed():
 		violations.append("hàng đợi trigger đã vượt giới hạn (vòng lặp?)")
+	var potion_count := c.potions.count()
+	if potion_count > c.potions.capacity:
+		violations.append("số potion %d vượt số ô %d" % [potion_count, c.potions.capacity])
+	if potion_count > _last_potion_count:
+		violations.append("số potion tăng giữa trận (%d -> %d)" % [_last_potion_count, potion_count])
+	_last_potion_count = potion_count
 	var expected_ended := 1 if c.state.is_terminal() else 0
 	if _ended_count != expected_ended:
 		violations.append("battle_ended phát %d lần (cần %d)" % [_ended_count, expected_ended])

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_65xck"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_14xoy"]
+
+[sub_resource type="Resource" id="Resource_jr5wd"]
+script = ExtResource("1_65xck")
+type = 6
+amount = 3
+target = 0
+
+[sub_resource type="Resource" id="Resource_3ac8h"]
+script = ExtResource("1_65xck")
+type = 3
+amount = 3
+target = 0
+
+[resource]
+script = ExtResource("2_14xoy")
+id = &"bloodletting+"
+display_name = "Bloodletting+"
+description = "Lose {hp} HP. Gain {energy} Energy."
+card_type = 1
+rarity = 2
+character_id = &"warrior"
+cost = 0
+target_mode = 2
+effects = Array[ExtResource("1_65xck")]([SubResource("Resource_jr5wd"), SubResource("Resource_3ac8h")])
+icon_id = &"bloodletting"

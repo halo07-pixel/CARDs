@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_rqf7m"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_bxsio"]
+
+[sub_resource type="Resource" id="Resource_5mpem"]
+script = ExtResource("1_rqf7m")
+amount = 11
+target = 2
+
+[resource]
+script = ExtResource("2_bxsio")
+id = &"cleave+"
+display_name = "Cleave+"
+description = "Deal {damage} damage to ALL enemies."
+character_id = &"warrior"
+target_mode = 1
+effects = Array[ExtResource("1_rqf7m")]([SubResource("Resource_5mpem")])
+icon_id = &"cleave"

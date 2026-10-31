@@ -20,4 +20,5 @@ display_name = "Pommel Strike"
 description = "Deal {damage} damage. Draw {draw} card."
 character_id = &"warrior"
 effects = Array[ExtResource("1_f3bty")]([SubResource("Resource_cu4ey"), SubResource("Resource_rmls3")])
+upgraded_id = &"pommel_strike+"
 icon_id = &"pommel_strike"

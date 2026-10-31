@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_5aqie"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_pr8g7"]
+
+[sub_resource type="Resource" id="Resource_1rmc6"]
+script = ExtResource("1_5aqie")
+amount = 8
+target = 2
+scales_with_x = true
+
+[resource]
+script = ExtResource("2_pr8g7")
+id = &"whirlwind+"
+display_name = "Whirlwind+"
+description = "Deal {damage} damage to ALL enemies X times."
+rarity = 2
+character_id = &"warrior"
+cost = 0
+is_x_cost = true
+target_mode = 1
+effects = Array[ExtResource("1_5aqie")]([SubResource("Resource_1rmc6")])
+icon_id = &"whirlwind"

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_6ujor"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_yo1yk"]
+
+[sub_resource type="Resource" id="Resource_b477w"]
+script = ExtResource("1_6ujor")
+type = 1
+amount = 12
+target = 0
+
+[resource]
+script = ExtResource("2_yo1yk")
+id = &"block_potion"
+display_name = "Block Potion"
+description = "Gain 12 Block."
+icon_id = &"block_potion"
+effects = Array[ExtResource("1_6ujor")]([SubResource("Resource_b477w")])

@@ -20,4 +20,5 @@ rarity = 2
 character_id = &"warrior"
 target_mode = 2
 effects = Array[ExtResource("1_ysgo8")]([SubResource("Resource_co22x")])
+upgraded_id = &"inflame+"
 icon_id = &"inflame"

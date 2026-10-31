@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_d2sme"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_85ena"]
+
+[sub_resource type="Resource" id="Resource_86cln"]
+script = ExtResource("1_d2sme")
+type = 4
+amount = 3
+status_id = &"weak"
+
+[resource]
+script = ExtResource("2_85ena")
+id = &"weak_potion"
+display_name = "Weak Potion"
+description = "Apply 3 Weak to target enemy."
+icon_id = &"weak_potion"
+target_mode = 0
+effects = Array[ExtResource("1_d2sme")]([SubResource("Resource_86cln")])

@@ -85,3 +85,17 @@ func test_detects_battle_ended_count_mismatch() -> void:
 	var controller: BattleController = parts[0]
 	controller.state.phase = BattleState.Phase.DEFEAT  # kết thúc nhưng KHÔNG phát battle_ended
 	assert_true(_violations_contain(parts[1].check(), "battle_ended"))
+
+
+func test_detects_potions_appearing_mid_battle_and_belt_overflow() -> void:
+	var parts := _fresh()
+	var controller: BattleController = parts[0]
+	var fire := PotionRegistry.load_from_dir("res://data/potions").get_potion(&"fire_potion")
+	assert_eq(parts[1].check(), [] as Array[String])
+	controller.potions.add(fire)
+	assert_true(_violations_contain(parts[1].check(), "potion tăng"), "potion không được tự xuất hiện giữa trận")
+	var overfull := _fresh()
+	var belt: PotionBelt = overfull[0].potions
+	for i in belt.capacity + 1:
+		belt._slots.append(fire)
+	assert_true(_violations_contain(overfull[1].check(), "vượt số ô"))

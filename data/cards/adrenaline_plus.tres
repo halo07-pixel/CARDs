@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_cq8vi"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_svdr5"]
+
+[sub_resource type="Resource" id="Resource_sgwlg"]
+script = ExtResource("1_cq8vi")
+type = 3
+amount = 2
+target = 0
+
+[sub_resource type="Resource" id="Resource_uxhqv"]
+script = ExtResource("1_cq8vi")
+type = 2
+amount = 2
+target = 0
+
+[resource]
+script = ExtResource("2_svdr5")
+id = &"adrenaline+"
+display_name = "Adrenaline+"
+description = "Gain {energy} Energy. Draw {draw} cards. Exhaust."
+card_type = 1
+rarity = 2
+character_id = &"warrior"
+cost = 0
+target_mode = 2
+effects = Array[ExtResource("1_cq8vi")]([SubResource("Resource_sgwlg"), SubResource("Resource_uxhqv")])
+exhaust = true
+icon_id = &"adrenaline"

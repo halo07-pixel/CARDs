@@ -28,6 +28,8 @@ func validate() -> Array[String]:
 			continue
 		for message: String in effect.validate():
 			errors.append("effects[%d]: %s" % [i, message])
+		if effect.scales_with_x:
+			errors.append("effects[%d]: scales_with_x chỉ dùng cho thẻ X-cost" % i)
 		if effect.type == EffectData.Type.DRAW or effect.type == EffectData.Type.GAIN_ENERGY:
 			errors.append("effects[%d]: quái không dùng DRAW/GAIN_ENERGY" % i)
 	return errors

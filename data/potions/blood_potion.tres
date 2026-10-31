@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_ag072"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_4whxd"]
+
+[sub_resource type="Resource" id="Resource_dk5o5"]
+script = ExtResource("1_ag072")
+type = 5
+amount = 12
+target = 0
+
+[resource]
+script = ExtResource("2_4whxd")
+id = &"blood_potion"
+display_name = "Blood Potion"
+description = "Heal 12 HP."
+icon_id = &"blood_potion"
+rarity = 1
+effects = Array[ExtResource("1_ag072")]([SubResource("Resource_dk5o5")])

@@ -15,6 +15,7 @@ func _init(controller: BattleController) -> void:
 	controller.action_rejected.connect(_on_rejected)
 	controller.battle_ended.connect(_on_ended)
 	controller.triggered.connect(_on_triggered)
+	controller.potion_used.connect(_on_potion)
 
 
 ## Các sự kiện bắt đầu bằng prefix (ví dụ "state:", "ended:").
@@ -73,3 +74,7 @@ func _on_ended(victory: bool) -> void:
 
 func _on_triggered(owner: Combatant, source_key: StringName, _results: Array) -> void:
 	events.append("triggered:%s:%s" % [owner.id, source_key])
+
+
+func _on_potion(slot: int, potion: PotionData, _target: EnemyUnit, _results: Array) -> void:
+	events.append("potion:%s:slot%d" % [potion.id, slot])

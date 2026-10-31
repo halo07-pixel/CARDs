@@ -23,4 +23,5 @@ description = "Deal {damage} damage and apply {vulnerable} Vulnerable to ALL ene
 character_id = &"warrior"
 target_mode = 1
 effects = Array[ExtResource("1_dppes")]([SubResource("Resource_xk6m2"), SubResource("Resource_t373u")])
+upgraded_id = &"thunderclap+"
 icon_id = &"thunderclap"

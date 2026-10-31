@@ -65,3 +65,10 @@ func test_scaled_returns_a_copy_and_keeps_other_fields() -> void:
 func test_new_enum_values_were_appended_so_old_data_keeps_its_numbers() -> void:
 	assert_eq([T.DAMAGE, T.BLOCK, T.DRAW, T.GAIN_ENERGY, T.APPLY_STATUS], [0, 1, 2, 3, 4])
 	assert_eq([G.SELF, G.TARGET_ENEMY, G.ALL_ENEMIES, G.RANDOM_ENEMY], [0, 1, 2, 3])
+
+
+func test_scales_with_x_defaults_to_false_and_survives_scaling() -> void:
+	var effect := EffectData.create(T.DAMAGE, 5, G.TARGET_ENEMY)
+	assert_false(effect.scales_with_x)
+	effect.scales_with_x = true
+	assert_true(effect.scaled(2).scales_with_x, "bản sao giữ nguyên cờ")

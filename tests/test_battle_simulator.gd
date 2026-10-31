@@ -124,3 +124,68 @@ func test_all_relics_never_break_invariants_and_make_the_player_sturdier() -> vo
 		for group: Array in [[&"slime"], [&"goblin", &"slime"], [&"slime", &"goblin", &"acolyte"]]:
 			var stats := sim.run_scenario("relics", _ids(group), bot_kind, 30, 21)
 			assert_eq(stats.violations, [] as Array[String], "%s %s" % [bot_kind, group])
+
+
+func _potion_sim() -> BattleSimulator:
+	var sim := _sim()
+	sim.potions = PotionRegistry.load_from_dir("res://data/potions")
+	sim.potion_count = 3
+	return sim
+
+
+func test_potions_are_used_never_break_invariants_and_help_a_weak_player() -> void:
+	var trio := _ids([&"slime", &"goblin", &"acolyte"])
+	var plain := _sim().run_scenario("trio", trio, BattleSimulator.BOT_RANDOM, 60, 3)
+	var stocked := _potion_sim().run_scenario("trio", trio, BattleSimulator.BOT_RANDOM, 60, 3)
+	assert_eq(stocked.violations, [] as Array[String])
+	assert_true(stocked.avg_potions_used() > 0.5, "bot ngẫu nhiên phải dùng potion (%.2f)" % stocked.avg_potions_used())
+	assert_eq(plain.total_potions_used, 0)
+	assert_true(stocked.win_rate() > plain.win_rate(),
+			"có potion thắng nhiều hơn (%.2f so với %.2f)" % [stocked.win_rate(), plain.win_rate()])
+
+
+func test_potion_runs_are_reproducible_and_potions_per_battle_are_distinct() -> void:
+	var trio := _ids([&"slime", &"goblin", &"acolyte"])
+	var a := _potion_sim().run_scenario("x", trio, BattleSimulator.BOT_RANDOM, 30, 9)
+	var b := _potion_sim().run_scenario("x", trio, BattleSimulator.BOT_RANDOM, 30, 9)
+	assert_eq([a.wins, a.total_turns, a.total_hp_lost, a.total_potions_used],
+			[b.wins, b.total_turns, b.total_hp_lost, b.total_potions_used])
+	var sim := _potion_sim()
+	var picked := sim._roll_potions(5)
+	assert_eq(picked.size(), 3)
+	var unique := {}
+	for id in picked:
+		unique[id] = true
+	assert_eq(unique.size(), 3, "3 potion khác nhau")
+	assert_eq(picked, sim._roll_potions(5), "cùng seed cùng bộ potion")
+
+
+func test_asking_for_more_potions_than_exist_is_clamped_and_zero_means_none() -> void:
+	var sim := _potion_sim()
+	sim.potion_count = 99
+	assert_eq(sim._roll_potions(1).size(), sim.potions.size())
+	sim.potion_count = 0
+	assert_eq(sim._roll_potions(1).size(), 0)
+	var none := _sim()
+	none.potion_count = 3
+	assert_eq(none._roll_potions(1).size(), 0, "thiếu registry thì không có potion")
+
+
+func test_everything_enabled_at_once_never_breaks_invariants() -> void:
+	var relics := RelicRegistry.load_from_dir("res://data/relics")
+	var sim := _potion_sim()
+	sim.relics = relics
+	sim.relic_ids = relics.all_ids()
+	var deck: Array[StringName] = []
+	for id in _cards.all_ids():
+		if not _cards.get_card(id).is_upgrade():
+			deck.append(id)
+	var full := BattleSimulator.new(_warrior, _cards, _enemies, _statuses, deck)
+	full.relics = relics
+	full.relic_ids = relics.all_ids()
+	full.potions = sim.potions
+	full.potion_count = 3
+	for bot_kind in [BattleSimulator.BOT_GREEDY, BattleSimulator.BOT_RANDOM]:
+		for group: Array in [[&"slime"], [&"goblin", &"slime"], [&"slime", &"goblin", &"acolyte"]]:
+			var stats := full.run_scenario("everything", _ids(group), bot_kind, 25, 77)
+			assert_eq(stats.violations, [] as Array[String], "%s %s" % [bot_kind, group])

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_ra3ws"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_r64s6"]
+
+[sub_resource type="Resource" id="Resource_uh433"]
+script = ExtResource("1_ra3ws")
+amount = 10
+
+[sub_resource type="Resource" id="Resource_2r0uk"]
+script = ExtResource("1_ra3ws")
+type = 2
+amount = 2
+target = 0
+
+[resource]
+script = ExtResource("2_r64s6")
+id = &"pommel_strike+"
+display_name = "Pommel Strike+"
+description = "Deal {damage} damage. Draw {draw} cards."
+character_id = &"warrior"
+effects = Array[ExtResource("1_ra3ws")]([SubResource("Resource_uh433"), SubResource("Resource_2r0uk")])
+icon_id = &"pommel_strike"

@@ -16,7 +16,9 @@ static func create_player(character: CharacterData, current_hp: int = -1) -> Com
 static func create(character: CharacterData, player: Combatant, deck_ids: Array[StringName],
 		enemy_ids: Array[StringName], cards: CardRegistry, enemies: EnemyRegistry,
 		statuses: StatusRegistry, seed_value: int = 1, turn_cap: int = 0,
-		relic_ids: Array[StringName] = [], relic_registry: RelicRegistry = null) -> BattleController:
+		relic_ids: Array[StringName] = [], relic_registry: RelicRegistry = null,
+		potion_ids: Array[StringName] = [], potion_registry: PotionRegistry = null,
+		potion_slots: int = PotionBelt.DEFAULT_SLOTS) -> BattleController:
 	if character == null or player == null or cards == null or enemies == null or statuses == null:
 		push_error("BattleFactory.create: thiếu character/player/registry")
 		return null
@@ -29,6 +31,14 @@ static func create(character: CharacterData, player: Combatant, deck_ids: Array[
 		if relics.is_empty():
 			push_error("BattleFactory.create: có relic không tồn tại")
 			return null
+	var belt: PotionBelt = null
+	if not potion_ids.is_empty():
+		belt = PotionBelt.from_ids(potion_ids, potion_registry, potion_slots)
+		if belt == null:
+			push_error("BattleFactory.create: potion không hợp lệ (id lạ, thiếu registry hoặc quá số ô)")
+			return null
+	else:
+		belt = PotionBelt.new(potion_slots)
 	var config := character.make_battle_config()
 	config.turn_cap = turn_cap
 	for relic in relics:
@@ -45,4 +55,4 @@ static func create(character: CharacterData, player: Combatant, deck_ids: Array[
 	if instances.is_empty():
 		push_error("BattleFactory.create: bộ bài rỗng hoặc có thẻ không tồn tại")
 		return null
-	return BattleController.create_from_data(player, instances, datas, statuses, seed_value, config, relics)
+	return BattleController.create_from_data(player, instances, datas, statuses, seed_value, config, relics, belt)

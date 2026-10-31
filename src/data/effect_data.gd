@@ -12,6 +12,7 @@ enum Target { SELF, TARGET_ENEMY, ALL_ENEMIES, RANDOM_ENEMY, EVENT_SOURCE }
 @export var hits: int = 1
 @export var status_id: StringName = &""
 @export var target: Target = Target.TARGET_ENEMY
+@export var scales_with_x: bool = false  ## chỉ thẻ X-cost: effect lặp X (+ x_bonus của thẻ) lần
 
 
 static func create(p_type: Type, p_amount: int, p_target: Target,
@@ -27,7 +28,9 @@ static func create(p_type: Type, p_amount: int, p_target: Target,
 
 ## Bản sao với amount nhân lên (trigger scale_by_stacks); không sửa effect gốc dùng chung.
 func scaled(multiplier: int) -> EffectData:
-	return EffectData.create(type, amount * multiplier, target, hits, status_id)
+	var copy := EffectData.create(type, amount * multiplier, target, hits, status_id)
+	copy.scales_with_x = scales_with_x
+	return copy
 
 
 ## Trả về danh sách lỗi (rỗng = hợp lệ). EVENT_SOURCE chỉ hợp lệ khi allow_event_source

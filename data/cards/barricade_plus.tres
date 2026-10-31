@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_domur"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_t2s2a"]
+
+[sub_resource type="Resource" id="Resource_v2k53"]
+script = ExtResource("1_domur")
+type = 4
+amount = 1
+status_id = &"barricade"
+target = 0
+
+[resource]
+script = ExtResource("2_t2s2a")
+id = &"barricade+"
+display_name = "Barricade+"
+description = "Block is not removed at the start of your turn."
+card_type = 2
+rarity = 3
+character_id = &"warrior"
+cost = 2
+target_mode = 2
+effects = Array[ExtResource("1_domur")]([SubResource("Resource_v2k53")])
+icon_id = &"barricade"

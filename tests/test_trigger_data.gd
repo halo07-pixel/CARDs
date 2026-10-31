@@ -56,3 +56,9 @@ func test_card_type_filter_only_with_card_played() -> void:
 func test_effect_errors_are_prefixed_with_index() -> void:
 	var errors := Factory.trigger1(E.TURN_START, EffectData.create(T.BLOCK, 0, G.SELF)).validate()
 	assert_true(errors.size() > 0 and errors[0].begins_with("effects[0]"))
+
+
+func test_triggers_cannot_scale_with_x() -> void:
+	var effect := EffectData.create(T.BLOCK, 5, G.SELF)
+	effect.scales_with_x = true
+	assert_false(Factory.trigger1(E.TURN_START, effect).validate().is_empty())

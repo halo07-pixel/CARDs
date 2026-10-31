@@ -22,4 +22,5 @@ rarity = 0
 character_id = &"warrior"
 cost = 2
 effects = Array[ExtResource("1_ayya6")]([SubResource("Resource_knm8m"), SubResource("Resource_863wm")])
+upgraded_id = &"bash+"
 icon_id = &"bash"

@@ -34,6 +34,8 @@ func validate() -> Array[String]:
 			continue
 		for message: String in effect.validate(true):
 			errors.append("effects[%d]: %s" % [i, message])
+		if effect.scales_with_x:
+			errors.append("effects[%d]: scales_with_x chỉ dùng cho thẻ X-cost" % i)
 		if effect.target == EffectData.Target.TARGET_ENEMY:
 			errors.append("effects[%d]: TARGET_ENEMY không dùng trong trigger (dùng ALL_ENEMIES, RANDOM_ENEMY hoặc EVENT_SOURCE)" % i)
 		if effect.target == EffectData.Target.EVENT_SOURCE \
