@@ -3,6 +3,10 @@
 Game thẻ bài roguelike theo lối chơi Slay the Spire, làm bằng **Godot 4.7** (GDScript, renderer Compatibility).
 Mục tiêu: bản chơi được đầy đủ vòng lặp (map, chiến đấu, thưởng, cửa hàng, lửa trại, sự kiện, boss) với ~70% nội dung của Slay the Spire.
 
+## Bàn giao
+
+Bối cảnh, quyết định thiết kế, trạng thái và bước tiếp theo: xem [`HANDOFF.md`](HANDOFF.md). Quy tắc làm việc cho Claude: [`CLAUDE.md`](CLAUDE.md).
+
 ## Chạy test (headless)
 
 ```bash
