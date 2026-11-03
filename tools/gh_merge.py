@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gộp nhánh vào main dạng fast-forward bằng REST API (không tạo commit gộp, không ghi đè).
 
-Biến môi trường: TOKEN (bắt buộc), BRANCH (bắt buộc), BASE (mặc định main), REPO (mặc định halo07-pixel/CARD).
+Biến môi trường: TOKEN (bắt buộc), BRANCH (bắt buộc), BASE (mặc định main), REPO (mặc định halo07-pixel/CARDs).
 Dừng nếu BASE có commit mà BRANCH không có (khi đó phải rebase/gộp thủ công, không được ép).
 Chạy: TOKEN=... BRANCH=claude/phase-2-3-potions-xcost-upgrades python3 tools/gh_merge.py
 """
@@ -11,7 +11,7 @@ import sys
 import urllib.error
 import urllib.request
 
-REPO = os.environ.get("REPO", "halo07-pixel/CARD")
+REPO = os.environ.get("REPO", "halo07-pixel/CARDs")
 API = f"https://api.github.com/repos/{REPO}"
 
 

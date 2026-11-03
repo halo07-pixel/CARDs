@@ -9,7 +9,7 @@ Biến môi trường:
   BRANCH   (bắt buộc) nhánh đích. Chưa có -> tạo mới từ BASE. Đã có -> thêm commit lên đầu nhánh (fast-forward).
   MESSAGE  (bắt buộc) nội dung commit (theo mẫu `<type>: <mô tả>`).
   BASE     nhánh gốc để so sánh/tạo nhánh mới (mặc định main).
-  REPO     mặc định halo07-pixel/CARD.
+  REPO     mặc định halo07-pixel/CARDs.
   DRY_RUN  =1 chỉ liệt kê file sẽ đẩy.
 Chạy từ bất kỳ đâu: TOKEN=... BRANCH=claude/xxx MESSAGE="feat: ..." python3 tools/gh_push.py
 Chỉ thêm/sửa file (không xóa file trên remote); nếu local thiếu file có trên remote thì dừng và báo.
@@ -23,7 +23,7 @@ import urllib.error
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO = os.environ.get("REPO", "halo07-pixel/CARD")
+REPO = os.environ.get("REPO", "halo07-pixel/CARDs")
 API = f"https://api.github.com/repos/{REPO}"
 SKIP_DIRS = {".git", ".godot"}
 

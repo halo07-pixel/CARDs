@@ -1,4 +1,4 @@
-# HANDOFF - Spire Cards (repo `halo07-pixel/CARD`)
+# HANDOFF - Spire Cards (repo `halo07-pixel/CARDs`)
 
 > Tài liệu bàn giao cho session/đoạn chat mới. Đọc hết file này + `CLAUDE.md` trước khi làm bất cứ gì.
 > Cập nhật lần cuối: sau Giai đoạn 2.3 (nhánh `claude/phase-2-3-potions-xcost-upgrades`).
@@ -7,7 +7,7 @@
 
 - **Dự án:** game thẻ bài roguelike kiểu *Slay the Spire*, **Godot 4.7.2 / GDScript**, 1920x1080, renderer Compatibility.
 - **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã gần xong và được test rất kỹ (**466 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **Chưa có UI, menu, bản đồ, cửa hàng, nhân vật thứ hai, asset** - tức là **chưa có gì để người dùng nhìn hay bấm**.
-- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2 (commit `4218cff`). **Giai đoạn 2.3** (potion, X-cost, nâng cấp thẻ) nằm trên nhánh `claude/phase-2-3-potions-xcost-upgrades`, **chưa gộp** (chờ người dùng bảo "merge").
+- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, **2.3** (potion, X-cost, nâng cấp thẻ) - đã gộp (commit merge `b519357`, 466 test đạt). **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
 - **Quyết định đang chờ người dùng:** hướng đi tiếp theo (xem mục 13): A = gộp 2.3 + làm nhanh 2.4 rồi UI; B = gộp 2.3 và nhảy thẳng sang UI (Giai đoạn 3); C = giữ cách làm kỹ như cũ.
 - **Việc đầu tiên của session mới:** dựng môi trường (mục 4), chạy test để xác nhận, rồi hỏi người dùng chọn A/B/C (đừng tự quyết).
 
@@ -29,7 +29,7 @@ Lộ trình 8 giai đoạn: 0 nền móng, 1 lõi chiến đấu, 2 hệ thống
 
 ## 3. Người dùng và cách làm việc
 
-- Người dùng nói **tiếng Việt**, dùng Windows + PowerShell, repo public `halo07-pixel/CARD`. Trả lời tiếng Việt; **comment trong code bằng tiếng Việt**; **nội dung game (tên thẻ, mô tả) bằng tiếng Anh** (được chốt theo "đồng ý" mặc định; hỏi lại nếu họ muốn tiếng Việt - đổi sớm đỡ tốn công hơn).
+- Người dùng nói **tiếng Việt**, dùng Windows + PowerShell, repo public `halo07-pixel/CARDs`. Trả lời tiếng Việt; **comment trong code bằng tiếng Việt**; **nội dung game (tên thẻ, mô tả) bằng tiếng Anh** (được chốt theo "đồng ý" mặc định; hỏi lại nếu họ muốn tiếng Việt - đổi sớm đỡ tốn công hơn).
 - **Quy trình 5 bước bắt buộc** (người dùng đặt ngay từ đầu):
   1. Trình bày kiến trúc/ý tưởng - **chưa viết code**.
   2. **Chờ người dùng duyệt.**
@@ -53,7 +53,7 @@ mkdir -p ~/bin /home/claude/godot && cd /home/claude/godot
 curl -sL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
 unzip -oq g.zip && rm g.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64 && mv Godot_v4.7.2-stable_linux.x86_64 godot && ln -sf $PWD/godot ~/bin/godot
 export PATH=$HOME/bin:$PATH
-git clone https://github.com/halo07-pixel/CARD.git /home/claude/cardgame && cd /home/claude/cardgame   # repo public: clone không cần token
+git clone https://github.com/halo07-pixel/CARDs.git /home/claude/cardgame && cd /home/claude/cardgame   # repo public: clone không cần token
 git fetch origin claude/phase-2-3-potions-xcost-upgrades && git checkout claude/phase-2-3-potions-xcost-upgrades   # nếu 2.3 chưa gộp
 bash tools/run_tests.sh          # kỳ vọng: 466 passed (nhánh 2.3) hoặc 393 (main khi chưa gộp 2.3)
 ```
@@ -189,4 +189,4 @@ Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `ass
 
 ## 14. Prompt khởi động cho session mới (dán nguyên văn)
 
-> Dự án game thẻ bài roguelike Godot 4.7.2: repo `https://github.com/halo07-pixel/CARD` (public). Hãy clone, đọc `HANDOFF.md` và `CLAUDE.md` ở thư mục gốc (nếu Giai đoạn 2.3 chưa gộp thì nằm ở nhánh `claude/phase-2-3-potions-xcost-upgrades`). Dựng môi trường theo mục 4, chạy `bash tools/run_tests.sh` và báo kết quả. Sau đó tóm tắt tiến độ cho tôi trong 5 dòng và hỏi tôi chọn hướng A/B/C ở mục 13. Tuân thủ quy trình 5 bước: trình bày thiết kế trước, chờ tôi duyệt rồi mới viết code. Khi cần đẩy code lên GitHub tôi sẽ đưa token mới (fine-grained, chỉ repo CARD, Contents: Read and write); dùng `tools/gh_push.py` và `tools/gh_merge.py`, không ghi token vào file.
+> Dự án game thẻ bài roguelike Godot 4.7.2: repo `https://github.com/halo07-pixel/CARDs` (public). Hãy clone, đọc `HANDOFF.md` và `CLAUDE.md` ở thư mục gốc (nếu Giai đoạn 2.3 chưa gộp thì nằm ở nhánh `claude/phase-2-3-potions-xcost-upgrades`). Dựng môi trường theo mục 4, chạy `bash tools/run_tests.sh` và báo kết quả. Sau đó tóm tắt tiến độ cho tôi trong 5 dòng và hỏi tôi chọn hướng A/B/C ở mục 13. Tuân thủ quy trình 5 bước: trình bày thiết kế trước, chờ tôi duyệt rồi mới viết code. Khi cần đẩy code lên GitHub tôi sẽ đưa token mới (fine-grained, chỉ repo CARDs, Contents: Read and write); dùng `tools/gh_push.py` và `tools/gh_merge.py`, không ghi token vào file.
