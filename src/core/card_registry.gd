@@ -47,6 +47,70 @@ func link_errors() -> Array[String]:
 	return errors
 
 
+## Bản nâng cấp của thẻ, hoặc null nếu thẻ không có/không tồn tại.
+func upgraded(card_id: StringName) -> CardData:
+	var card := get_card(card_id)
+	if card == null or card.upgraded_id.is_empty():
+		return null
+	return get_card(card.upgraded_id)
+
+
+## Kiểm tra DỮ LIỆU: bản "+" không được yếu hơn bản gốc ở bất kỳ điểm nào và phải tốt hơn ở ít nhất một điểm.
+func upgrade_problems() -> Array[String]:
+	var problems: Array[String] = []
+	for id in all_ids():
+		var base := get_card(id)
+		var improved := get_card(base.upgraded_id) if not base.upgraded_id.is_empty() else null
+		if improved != null:  # liên kết hỏng đã có link_errors()
+			problems.append_array(_compare_upgrade(base, improved))
+	return problems
+
+
+static func _compare_upgrade(base: CardData, up: CardData) -> Array[String]:
+	var problems: Array[String] = []
+	var label := "%s -> %s" % [base.id, up.id]
+	if up.card_type != base.card_type or up.character_id != base.character_id \
+			or up.rarity != base.rarity or up.target_mode != base.target_mode:
+		problems.append("%s: loại/nhân vật/độ hiếm/kiểu nhắm phải giữ nguyên" % label)
+	if up.is_x_cost != base.is_x_cost or up.unplayable != base.unplayable:
+		problems.append("%s: X-cost/unplayable phải giữ nguyên" % label)
+	if up.cost > base.cost:
+		problems.append("%s: cost tăng (%d -> %d)" % [label, base.cost, up.cost])
+	if (up.exhaust and not base.exhaust) or (up.ethereal and not base.ethereal) \
+			or (base.retain and not up.retain) or (base.innate and not up.innate):
+		problems.append("%s: từ khóa bị xấu đi (thêm exhaust/ethereal hoặc mất retain/innate)" % label)
+	if up.x_bonus < base.x_bonus:
+		problems.append("%s: x_bonus giảm" % label)
+	var better := up.cost < base.cost or up.x_bonus > base.x_bonus \
+			or (base.exhaust and not up.exhaust) or (base.ethereal and not up.ethereal)
+	var base_totals := _effect_totals(base)
+	var up_totals := _effect_totals(up)
+	for key: String in base_totals:
+		var before: int = base_totals[key]
+		var after: int = up_totals.get(key, 0)
+		var is_self_cost := key.begins_with("LOSE_HP|SELF|")  # mất máu: ÍT hơn mới tốt
+		if (after > before) if not is_self_cost else (after < before):
+			better = true
+		elif after != before:
+			problems.append("%s: %s yếu đi (%d -> %d)" % [label, key, before, after])
+	for key: String in up_totals:
+		if not base_totals.has(key):
+			better = true
+	if not better:
+		problems.append("%s: bản nâng cấp không tốt hơn bản gốc ở điểm nào" % label)
+	return problems
+
+
+## Tổng (amount x hits) của mọi effect, gom theo (loại, đích, status).
+static func _effect_totals(card: CardData) -> Dictionary:
+	var totals := {}
+	for effect in card.effects:
+		var key := "%s|%s|%s" % [EffectData.Type.keys()[effect.type], EffectData.Target.keys()[effect.target],
+				effect.status_id]
+		totals[key] = totals.get(key, 0) + effect.amount * effect.hits
+	return totals
+
+
 func _id_of(resource: Resource) -> StringName:
 	return (resource as CardData).id
 

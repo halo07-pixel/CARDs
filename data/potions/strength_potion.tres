@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_njpfm"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_vnmc8"]
+
+[sub_resource type="Resource" id="Resource_f0v3f"]
+script = ExtResource("1_njpfm")
+type = 4
+amount = 2
+status_id = &"strength"
+target = 0
+
+[resource]
+script = ExtResource("2_vnmc8")
+id = &"strength_potion"
+display_name = "Strength Potion"
+description = "Gain 2 Strength."
+icon_id = &"strength_potion"
+effects = Array[ExtResource("1_njpfm")]([SubResource("Resource_f0v3f")])

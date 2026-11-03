@@ -17,4 +17,5 @@ description = "Apply {poison} Poison."
 card_type = 1
 character_id = &"warrior"
 effects = Array[ExtResource("1_cuap7")]([SubResource("Resource_ji2xf")])
+upgraded_id = &"deadly_poison+"
 icon_id = &"deadly_poison"

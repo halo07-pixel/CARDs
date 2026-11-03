@@ -16,4 +16,5 @@ description = "Deal {damage} damage to ALL enemies."
 character_id = &"warrior"
 target_mode = 1
 effects = Array[ExtResource("1_6oeo4")]([SubResource("Resource_dl33o")])
+upgraded_id = &"cleave+"
 icon_id = &"cleave"

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_djusq"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_hsw4p"]
+
+[sub_resource type="Resource" id="Resource_1pxmu"]
+script = ExtResource("1_djusq")
+type = 3
+amount = 2
+target = 0
+
+[resource]
+script = ExtResource("2_hsw4p")
+id = &"energy_potion"
+display_name = "Energy Potion"
+description = "Gain 2 Energy."
+icon_id = &"energy_potion"
+effects = Array[ExtResource("1_djusq")]([SubResource("Resource_1pxmu")])

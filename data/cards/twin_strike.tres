@@ -15,4 +15,5 @@ display_name = "Twin Strike"
 description = "Deal {damage} damage twice."
 character_id = &"warrior"
 effects = Array[ExtResource("1_6mdqp")]([SubResource("Resource_mxf81")])
+upgraded_id = &"twin_strike+"
 icon_id = &"twin_strike"

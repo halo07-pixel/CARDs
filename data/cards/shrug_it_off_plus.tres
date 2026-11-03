@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_lwxpi"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_h6mdv"]
+
+[sub_resource type="Resource" id="Resource_2me83"]
+script = ExtResource("1_lwxpi")
+type = 1
+amount = 11
+target = 0
+
+[sub_resource type="Resource" id="Resource_l8kh1"]
+script = ExtResource("1_lwxpi")
+type = 2
+amount = 1
+target = 0
+
+[resource]
+script = ExtResource("2_h6mdv")
+id = &"shrug_it_off+"
+display_name = "Shrug It Off+"
+description = "Gain {block} Block. Draw {draw} card."
+card_type = 1
+character_id = &"warrior"
+target_mode = 2
+effects = Array[ExtResource("1_lwxpi")]([SubResource("Resource_2me83"), SubResource("Resource_l8kh1")])
+icon_id = &"shrug_it_off"

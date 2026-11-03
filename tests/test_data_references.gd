@@ -50,3 +50,10 @@ func test_relic_triggers_only_reference_existing_statuses() -> void:
 func test_every_status_used_by_content_is_actually_defined() -> void:
 	assert_true(_statuses.size() >= 11)
 	assert_eq(_cards.link_errors(), [] as Array[String])
+
+
+func test_potion_effects_only_reference_existing_statuses() -> void:
+	var potions := PotionRegistry.load_from_dir("res://data/potions")
+	assert_true(potions.size() >= 8)
+	for id in potions.all_ids():
+		_check_effects(potions.get_potion(id).effects, "potion " + String(id))

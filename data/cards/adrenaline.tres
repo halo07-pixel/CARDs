@@ -27,4 +27,5 @@ cost = 0
 target_mode = 2
 effects = Array[ExtResource("1_7whjw")]([SubResource("Resource_4ne8q"), SubResource("Resource_ifinu")])
 exhaust = true
+upgraded_id = &"adrenaline+"
 icon_id = &"adrenaline"

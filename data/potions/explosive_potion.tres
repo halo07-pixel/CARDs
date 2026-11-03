@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PotionData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_702yf"]
+[ext_resource type="Script" path="res://src/data/potion_data.gd" id="2_tag0y"]
+
+[sub_resource type="Resource" id="Resource_u2hux"]
+script = ExtResource("1_702yf")
+amount = 10
+target = 2
+
+[resource]
+script = ExtResource("2_tag0y")
+id = &"explosive_potion"
+display_name = "Explosive Potion"
+description = "Deal 10 damage to ALL enemies."
+icon_id = &"explosive_potion"
+target_mode = 1
+effects = Array[ExtResource("1_702yf")]([SubResource("Resource_u2hux")])

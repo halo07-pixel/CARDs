@@ -20,4 +20,5 @@ cost = 0
 target_mode = 2
 effects = Array[ExtResource("1_wi5aq")]([SubResource("Resource_xnwgy")])
 exhaust = true
+upgraded_id = &"bandage_up+"
 icon_id = &"bandage_up"

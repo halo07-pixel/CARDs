@@ -12,7 +12,7 @@ func _real() -> CardRegistry:
 
 func test_loads_all_starter_cards_valid_and_linked() -> void:
 	var registry := _real()
-	assert_eq(registry.size(), 19, "12 thẻ Giai đoạn 1 + 7 thẻ Giai đoạn 2.1 (file lỗi/trùng id sẽ bị loại)")
+	assert_eq(registry.size(), 38, "19 thẻ gốc + 19 bản nâng cấp (file lỗi/trùng id sẽ bị loại)")
 	assert_eq(registry.link_errors(), [] as Array[String])
 	for id in [&"strike", &"strike+", &"defend", &"defend+", &"bash", &"cleave", &"iron_wave",
 			&"pommel_strike", &"shrug_it_off", &"twin_strike", &"adrenaline", &"thunderclap"]:

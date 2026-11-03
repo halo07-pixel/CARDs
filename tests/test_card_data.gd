@@ -17,7 +17,7 @@ func test_missing_id_and_name_are_invalid() -> void:
 func test_cost_rules() -> void:
 	assert_false(Factory.card(&"a", {"cost": -1}).validate().is_empty())
 	assert_false(Factory.card(&"a", {"is_x_cost": true, "cost": 2}).validate().is_empty())
-	assert_true(Factory.card(&"a", {"is_x_cost": true, "cost": 0}).validate().is_empty())
+	assert_true(_x_card(&"a").validate().is_empty())
 
 
 func test_playable_card_needs_effects() -> void:
@@ -76,3 +76,50 @@ func test_all_card_resources_are_valid_unique_and_linked() -> void:
 	for card: CardData in cards.values():
 		if not card.upgraded_id.is_empty():
 			assert_true(cards.has(card.upgraded_id), "%s trỏ tới upgraded_id không tồn tại" % card.id)
+
+
+## --- X-cost ---
+
+func _x_card(id: StringName, extra: Dictionary = {}) -> CardData:
+	var scaling := EffectData.create(EffectData.Type.DAMAGE, 5, EffectData.Target.TARGET_ENEMY)
+	scaling.scales_with_x = true
+	var effects: Array[EffectData] = [scaling]
+	var overrides := {"is_x_cost": true, "cost": 0, "effects": effects}
+	overrides.merge(extra, true)
+	return Factory.card(id, overrides)
+
+
+func test_valid_x_cost_card() -> void:
+	assert_eq(_x_card(&"whirl").validate(), [] as Array[String])
+	assert_eq(_x_card(&"whirl", {"x_bonus": 1}).validate(), [] as Array[String])
+
+
+func test_x_cost_card_needs_an_effect_that_scales() -> void:
+	assert_false(Factory.card(&"x", {"is_x_cost": true, "cost": 0}).validate().is_empty(),
+			"thẻ X-cost không có effect nào lặp theo X là vô nghĩa")
+
+
+func test_scaling_effect_is_only_valid_on_x_cost_cards() -> void:
+	var scaling := EffectData.create(EffectData.Type.DAMAGE, 5, EffectData.Target.TARGET_ENEMY)
+	scaling.scales_with_x = true
+	var effects: Array[EffectData] = [scaling]
+	assert_false(Factory.card(&"normal", {"effects": effects}).validate().is_empty())
+
+
+func test_x_bonus_rules() -> void:
+	assert_false(_x_card(&"x", {"x_bonus": -1}).validate().is_empty(), "âm")
+	assert_false(Factory.card(&"normal", {"x_bonus": 1}).validate().is_empty(), "chỉ dùng cho thẻ X-cost")
+
+
+func test_target_mode_for_matches_the_expected_mode_of_cards() -> void:
+	var single: Array[EffectData] = [EffectData.create(EffectData.Type.DAMAGE, 5, EffectData.Target.TARGET_ENEMY)]
+	var everyone: Array[EffectData] = [EffectData.create(EffectData.Type.DAMAGE, 5, EffectData.Target.ALL_ENEMIES)]
+	var random: Array[EffectData] = [EffectData.create(EffectData.Type.DAMAGE, 5, EffectData.Target.RANDOM_ENEMY)]
+	var self_only: Array[EffectData] = [EffectData.create(EffectData.Type.BLOCK, 5, EffectData.Target.SELF)]
+	var with_null: Array[EffectData] = [null, EffectData.create(EffectData.Type.BLOCK, 5, EffectData.Target.SELF)]
+	assert_eq(CardData.target_mode_for(single), CardData.TargetMode.SINGLE_ENEMY)
+	assert_eq(CardData.target_mode_for(everyone), CardData.TargetMode.ALL_ENEMIES)
+	assert_eq(CardData.target_mode_for(random), CardData.TargetMode.NONE)
+	assert_eq(CardData.target_mode_for(self_only), CardData.TargetMode.SELF)
+	assert_eq(CardData.target_mode_for(with_null), CardData.TargetMode.SELF, "bỏ qua phần tử null")
+	assert_eq(Factory.card(&"c").expected_target_mode(), CardData.target_mode_for(Factory.card(&"c").effects))

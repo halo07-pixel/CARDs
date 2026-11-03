@@ -24,4 +24,5 @@ card_type = 1
 character_id = &"warrior"
 target_mode = 2
 effects = Array[ExtResource("1_go1t5")]([SubResource("Resource_t8mwq"), SubResource("Resource_ajgh7")])
+upgraded_id = &"shrug_it_off+"
 icon_id = &"shrug_it_off"

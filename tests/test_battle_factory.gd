@@ -133,3 +133,33 @@ func test_no_relics_means_no_change() -> void:
 	var controller := _create([&"slime"] as Array[StringName])
 	assert_eq(controller.relics.size(), 0)
 	assert_eq(controller.config.max_energy, 3)
+
+
+func _create_with_potions(potion_ids: Array, registry: PotionRegistry, slots: int = 3) -> BattleController:
+	var ids: Array[StringName] = []
+	ids.assign(potion_ids)
+	return BattleFactory.create(_warrior, BattleFactory.create_player(_warrior), _warrior.starting_deck,
+			[&"slime"] as Array[StringName], _cards, _enemies, _statuses, 1, 0,
+			[] as Array[StringName], null, ids, registry, slots)
+
+
+func test_potion_ids_fill_the_belt_in_order() -> void:
+	var potions := PotionRegistry.load_from_dir("res://data/potions")
+	var controller := _create_with_potions([&"fire_potion", &"swift_potion"], potions)
+	assert_eq(controller.potions.to_ids(), [&"fire_potion", &"swift_potion"] as Array[StringName])
+	assert_eq(controller.potions.capacity, 3)
+
+
+func test_unknown_potion_overflow_or_missing_registry_returns_null() -> void:
+	var potions := PotionRegistry.load_from_dir("res://data/potions")
+	assert_true(_create_with_potions([&"ghost_potion"], potions) == null, "potion không tồn tại")
+	assert_true(_create_with_potions([&"fire_potion", &"block_potion", &"swift_potion", &"weak_potion"], potions) == null,
+			"nhiều hơn số ô")
+	assert_true(_create_with_potions([&"fire_potion"], null) == null, "thiếu registry")
+
+
+func test_slot_count_is_configurable() -> void:
+	var potions := PotionRegistry.load_from_dir("res://data/potions")
+	var four := [&"fire_potion", &"block_potion", &"swift_potion", &"weak_potion"]
+	assert_eq(_create_with_potions(four, potions, 4).potions.count(), 4)
+	assert_eq(_create_with_potions([], potions, 5).potions.capacity, 5, "không có potion vẫn có dây rỗng đủ ô")

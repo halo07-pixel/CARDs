@@ -20,4 +20,5 @@ display_name = "Iron Wave"
 description = "Gain {block} Block. Deal {damage} damage."
 character_id = &"warrior"
 effects = Array[ExtResource("1_aqg2l")]([SubResource("Resource_8175y"), SubResource("Resource_hm4hg")])
+upgraded_id = &"iron_wave+"
 icon_id = &"iron_wave"

@@ -33,3 +33,10 @@ func test_invalid_or_null_effect_is_reported() -> void:
 	assert_true(errors.size() > 0 and errors[0].begins_with("effects[0]"))
 	var with_null: Array[EffectData] = [null]
 	assert_false(Factory.move(&"n", with_null).validate().is_empty())
+
+
+func test_enemy_moves_cannot_scale_with_x() -> void:
+	var effect := EffectData.create(T.DAMAGE, 5, G.TARGET_ENEMY)
+	effect.scales_with_x = true
+	var effects: Array[EffectData] = [effect]
+	assert_false(Factory.move(&"x", effects).validate().is_empty())

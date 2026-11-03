@@ -21,4 +21,5 @@ character_id = &"warrior"
 cost = 3
 target_mode = 2
 effects = Array[ExtResource("1_kw72m")]([SubResource("Resource_sk52c")])
+upgraded_id = &"barricade+"
 icon_id = &"barricade"

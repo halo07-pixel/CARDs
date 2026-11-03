@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" format=3]
+
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="1_mukgl"]
+[ext_resource type="Script" path="res://src/data/card_data.gd" id="2_a12sk"]
+
+[sub_resource type="Resource" id="Resource_ere75"]
+script = ExtResource("1_mukgl")
+amount = 7
+hits = 2
+
+[resource]
+script = ExtResource("2_a12sk")
+id = &"twin_strike+"
+display_name = "Twin Strike+"
+description = "Deal {damage} damage twice."
+character_id = &"warrior"
+effects = Array[ExtResource("1_mukgl")]([SubResource("Resource_ere75")])
+icon_id = &"twin_strike"

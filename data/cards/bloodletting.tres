@@ -26,4 +26,5 @@ character_id = &"warrior"
 cost = 0
 target_mode = 2
 effects = Array[ExtResource("1_21xf1")]([SubResource("Resource_w5vwq"), SubResource("Resource_qml5u")])
+upgraded_id = &"bloodletting+"
 icon_id = &"bloodletting"

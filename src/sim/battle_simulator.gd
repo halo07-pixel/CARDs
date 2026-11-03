@@ -15,6 +15,8 @@ var statuses: StatusRegistry
 var deck_ids: Array[StringName] = []
 var relic_ids: Array[StringName] = []  ## relic người chơi mang theo trong mọi trận mô phỏng
 var relics: RelicRegistry = null
+var potions: PotionRegistry = null
+var potion_count: int = 0  ## mỗi trận người chơi mang ngẫu nhiên (theo seed) từng này potion khác nhau
 var turn_cap: int = 60  ## trận bế tắc kết thúc (tính là thua) thay vì chạy vô hạn
 
 
@@ -50,8 +52,9 @@ func run_scenario(scenario_name: String, enemy_ids: Array[StringName], bot_kind:
 
 func _run_battle(enemy_ids: Array[StringName], bot_kind: StringName, seed_value: int, stats: ScenarioStats) -> void:
 	var player := BattleFactory.create_player(character)
+	var potion_ids := _roll_potions(seed_value)
 	var controller := BattleFactory.create(character, player, deck_ids, enemy_ids,
-			cards, enemies, statuses, seed_value, turn_cap, relic_ids, relics)
+			cards, enemies, statuses, seed_value, turn_cap, relic_ids, relics, potion_ids, potions)
 	var bot_rng := RandomNumberGenerator.new()
 	bot_rng.seed = seed_value * 7919 + 13
 	var bot := make_bot(bot_kind, bot_rng)
@@ -71,9 +74,23 @@ func _run_battle(enemy_ids: Array[StringName], bot_kind: StringName, seed_value:
 	if not controller.state.is_terminal():
 		_record_violation(stats, "seed %d: không kết thúc sau %d bước" % [seed_value, steps])
 		return
-	stats.record(controller.end_reason, controller.turn, player.max_hp - player.hp)
+	stats.record(controller.end_reason, controller.turn, player.max_hp - player.hp,
+			potion_ids.size() - controller.potions.count())
 
 
 func _record_violation(stats: ScenarioStats, message: String) -> void:
 	if stats.violations.size() < MAX_RECORDED_VIOLATIONS:
 		stats.violations.append(message)
+
+
+## Chọn ngẫu nhiên (theo seed trận, nên tái lập được) potion_count potion KHÁC NHAU.
+func _roll_potions(seed_value: int) -> Array[StringName]:
+	var picked: Array[StringName] = []
+	if potions == null or potion_count <= 0:
+		return picked
+	var pool := potions.all_ids()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value * 104729 + 7
+	while picked.size() < potion_count and not pool.is_empty():
+		picked.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+	return picked

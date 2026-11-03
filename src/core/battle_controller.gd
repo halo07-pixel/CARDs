@@ -14,6 +14,7 @@ signal enemy_defeated(unit: EnemyUnit)
 signal action_rejected(reason: StringName)
 signal battle_ended(victory: bool)
 signal triggered(owner: Combatant, source_key: StringName, results: Array[EffectResult])
+signal potion_used(slot: int, potion: PotionData, target: EnemyUnit, results: Array[EffectResult])
 
 const REASON_ALREADY_STARTED := &"already_started"
 const REASON_BATTLE_OVER := &"battle_over"
@@ -22,6 +23,7 @@ const REASON_CARD_NOT_IN_HAND := &"card_not_in_hand"
 const REASON_UNPLAYABLE := &"unplayable"
 const REASON_NOT_ENOUGH_ENERGY := &"not_enough_energy"
 const REASON_INVALID_TARGET := &"invalid_target"
+const REASON_NO_POTION := &"no_potion"
 const END_VICTORY := &"victory"
 const END_DEFEAT := &"defeat"
 const END_TURN_CAP := &"turn_cap"
@@ -30,6 +32,7 @@ var player: Combatant = null
 var deck: Deck = null
 var enemies: Array[EnemyUnit] = []
 var relics: Array[RelicData] = []
+var potions: PotionBelt = null
 var state := BattleState.new()
 var config: BattleConfig = null
 var energy: int = 0
@@ -46,7 +49,8 @@ var _triggers := TriggerRunner.new()
 ## Cùng seed + cùng chuỗi hành động => cùng kết quả (RNG xáo bài và RNG trận đấu tách riêng).
 static func create(p_player: Combatant, cards: Array[CardInstance], units: Array[EnemyUnit],
 		registry: StatusRegistry, seed_value: int = 1, p_config: BattleConfig = null,
-		battle_rng: RandomNumberGenerator = null, p_relics: Array[RelicData] = []) -> BattleController:
+		battle_rng: RandomNumberGenerator = null, p_relics: Array[RelicData] = [],
+		p_potions: PotionBelt = null) -> BattleController:
 	var cfg := p_config if p_config != null else BattleConfig.new()
 	var problems := _setup_problems(p_player, cards, units, registry, cfg, p_relics)
 	if not problems.is_empty():
@@ -57,6 +61,7 @@ static func create(p_player: Combatant, cards: Array[CardInstance], units: Array
 	controller.config = cfg
 	controller.enemies = units.duplicate()
 	controller.relics = p_relics.duplicate()
+	controller.potions = p_potions if p_potions != null else PotionBelt.new()
 	controller._status_registry = registry
 	controller._rng = battle_rng if battle_rng != null else _derived_rng(seed_value)
 	var deck_rng := RandomNumberGenerator.new()
@@ -70,7 +75,7 @@ static func create(p_player: Combatant, cards: Array[CardInstance], units: Array
 ## Tiện ích: dựng EnemyUnit từ EnemyData (id dạng "slime_0", "slime_1"...) dùng chung RNG của trận.
 static func create_from_data(p_player: Combatant, cards: Array[CardInstance], datas: Array[EnemyData],
 		registry: StatusRegistry, seed_value: int = 1, p_config: BattleConfig = null,
-		p_relics: Array[RelicData] = []) -> BattleController:
+		p_relics: Array[RelicData] = [], p_potions: PotionBelt = null) -> BattleController:
 	var rng := _derived_rng(seed_value)
 	var units: Array[EnemyUnit] = []
 	for i in datas.size():
@@ -81,7 +86,7 @@ static func create_from_data(p_player: Combatant, cards: Array[CardInstance], da
 		if unit == null:
 			return null
 		units.append(unit)
-	return create(p_player, cards, units, registry, seed_value, p_config, rng, p_relics)
+	return create(p_player, cards, units, registry, seed_value, p_config, rng, p_relics, p_potions)
 
 
 func start_battle() -> bool:
@@ -100,13 +105,14 @@ func start_battle() -> bool:
 ## target chỉ cần với thẻ nhắm một quái (SINGLE_ENEMY); thẻ khác bỏ qua tham số này.
 func play_card(card: CardInstance, target: EnemyUnit = null) -> bool:
 	var reason := _play_blocker(card)
-	if reason == &"" and not _target_is_valid(card, target):
+	if reason == &"" and not _target_is_valid(card.data.target_mode, target):
 		reason = REASON_INVALID_TARGET
 	if reason != &"":
 		return _reject(reason)
-	_set_energy(energy - (energy if card.data.is_x_cost else card.get_cost()))
+	var repeat := energy + card.data.x_bonus if card.data.is_x_cost else 1
+	_set_energy(0 if card.data.is_x_cost else energy - card.get_cost())
 	deck.begin_play(card)
-	var results := _resolve_card_effects(card, target)
+	var results := _resolve_effects(card.data.effects, target, repeat, true)
 	deck.finish_play(card)
 	_triggers.fire(BattleEvent.create(TriggerData.Event.CARD_PLAYED, player, null, 0, card), self)
 	card_played.emit(card, target, results)
@@ -128,6 +134,26 @@ func end_player_turn() -> bool:
 	player.end_turn()
 	state.transition(BattleState.Phase.ENEMY_TURN)
 	_run_enemy_turn()
+	return true
+
+
+## Dùng potion ở ô `slot` (không tốn năng lượng). target chỉ cần với potion nhắm một quái.
+func use_potion(slot: int, target: EnemyUnit = null) -> bool:
+	if state.is_terminal():
+		return _reject(REASON_BATTLE_OVER)
+	if not state.is_player_turn():
+		return _reject(REASON_NOT_PLAYER_TURN)
+	var potion := potions.get_at(slot)
+	if potion == null:
+		return _reject(REASON_NO_POTION)
+	if not _target_is_valid(potion.target_mode, target):
+		return _reject(REASON_INVALID_TARGET)
+	potions.remove_at(slot)
+	var results := _resolve_effects(potion.effects, target, 1, false)
+	potion_used.emit(slot, potion, target, results)
+	_triggers.drain(self)
+	_refresh_intents()
+	_check_end()
 	return true
 
 
@@ -241,24 +267,28 @@ func _play_blocker(card: CardInstance) -> StringName:
 	return &""
 
 
-func _target_is_valid(card: CardInstance, target: EnemyUnit) -> bool:
-	if card.data.target_mode != CardData.TargetMode.SINGLE_ENEMY:
+func _target_is_valid(mode: CardData.TargetMode, target: EnemyUnit) -> bool:
+	if mode != CardData.TargetMode.SINGLE_ENEMY:
 		return true
 	return target != null and target.is_alive() and enemies.has(target)
 
 
-func _resolve_card_effects(card: CardInstance, target: EnemyUnit) -> Array[EffectResult]:
+## Thực thi danh sách effect của thẻ hoặc potion. Effect scales_with_x lặp `repeat` lần.
+## counts_as_attack = false (potion): sát thương không sinh sự kiện ATTACKED (không kích hoạt Thorns).
+func _resolve_effects(effects: Array[EffectData], target: EnemyUnit, repeat: int,
+		counts_as_attack: bool) -> Array[EffectResult]:
 	var results: Array[EffectResult] = []
 	var opponents := _enemy_combatants()
 	var chosen: Combatant = target.combatant if target != null else null
-	for effect in card.data.effects:
-		if not player.is_alive():
-			break  # tự làm mình chết giữa chừng (vd. Bloodletting ở 3 máu): các effect sau bị bỏ
-		if effect.target == EffectData.Target.TARGET_ENEMY and (chosen == null or not chosen.is_alive()):
-			continue  # mục tiêu đã chết giữa chừng (vd. effect đầu tiên đã hạ nó)
-		var effect_results := EffectResolver.resolve(effect, player, chosen, opponents, self)
-		_triggers.events_from_results(effect_results, false, self)
-		results.append_array(effect_results)
+	for effect in effects:
+		for i in (repeat if effect.scales_with_x else 1):
+			if not player.is_alive():
+				return results  # tự làm mình chết giữa chừng (vd. Bloodletting ở 3 máu): effect sau bị bỏ
+			if effect.target == EffectData.Target.TARGET_ENEMY and (chosen == null or not chosen.is_alive()):
+				break  # mục tiêu đã chết giữa chừng (vd. lần lặp trước đã hạ nó)
+			var effect_results := EffectResolver.resolve(effect, player, chosen, opponents, self)
+			_triggers.events_from_results(effect_results, not counts_as_attack, self)
+			results.append_array(effect_results)
 	return results
 
 

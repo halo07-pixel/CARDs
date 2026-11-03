@@ -145,3 +145,57 @@ func test_greedy_never_plays_a_card_that_would_kill_the_player() -> void:
 	assert_eq(rec.count("played:"), 0, "ở 3 máu, Bloodletting là tự sát")
 	assert_true(controller.player.is_alive())
 	assert_eq(controller.turn, 2, "thay vào đó bot kết thúc lượt")
+
+
+## --- Potion ---
+
+func _with_potions(cards: Array[CardInstance], datas: Array[EnemyData], potion_ids: Array, hp: int = 80) -> BattleController:
+	var registry := PotionRegistry.load_from_dir("res://data/potions")
+	var ids: Array[StringName] = []
+	ids.assign(potion_ids)
+	var controller := BattleController.create_from_data(Factory.combatant(&"player", hp), cards, datas,
+			Factory.registry(), 1, null, [] as Array[RelicData], PotionBelt.from_ids(ids, registry))
+	controller.start_battle()
+	return controller
+
+
+func test_greedy_uses_a_potion_that_wins_the_battle() -> void:
+	var controller := _with_potions(Factory.fillers(10), _dummy(&"dummy", 20, 6), [&"fire_potion"])
+	GreedyBot.new().act(controller)
+	assert_eq(controller.state.phase, BattleState.Phase.VICTORY, "Fire Potion 20 sát thương hạ quái 20 máu")
+	assert_eq(controller.potions.count(), 0)
+
+
+func test_greedy_drinks_a_defensive_potion_when_in_danger() -> void:
+	var controller := _with_potions(Factory.fillers(10), _dummy(&"brute", 500, 50), [&"block_potion"], 60)
+	GreedyBot.new().act(controller)
+	assert_eq(controller.player.block, 12)
+	assert_eq(controller.potions.count(), 0)
+
+
+func test_greedy_saves_its_potions_when_it_is_safe() -> void:
+	var controller := _with_potions(Factory.fillers(10), _dummy(&"tank", 500, 1), [&"fire_potion", &"block_potion"])
+	var rec := Recorder.new(controller)
+	for i in 3:
+		GreedyBot.new().act(controller)
+	assert_eq(rec.count("potion:"), 0)
+	assert_eq(controller.potions.count(), 2)
+
+
+func test_random_bot_uses_potions_legally() -> void:
+	var registry := EnemyRegistry.load_from_dir("res://data/enemies")
+	var used := 0
+	for battle_index in 20:
+		var datas: Array[EnemyData] = [registry.get_enemy(&"slime"), registry.get_enemy(&"goblin")]
+		var config := _config()
+		config.turn_cap = 40
+		var controller := _with_potions(Factory.fillers(10), datas, [&"fire_potion", &"block_potion", &"weak_potion"])
+		var rec := Recorder.new(controller)
+		var bot := RandomBot.new(Factory.rng(battle_index + 7))
+		var steps := 0
+		while not controller.state.is_terminal() and steps < 400:
+			steps += 1
+			bot.act(controller)
+		assert_eq(rec.count("rejected:"), 0, "RandomBot chỉ dùng potion hợp lệ (trận %d)" % battle_index)
+		used += rec.count("potion:")
+	assert_true(used > 0, "RandomBot phải thực sự dùng potion")
