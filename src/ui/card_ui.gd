@@ -7,6 +7,11 @@ extends PanelContainer
 const CARD_SIZE := Vector2(220, 300)
 const ART_HEIGHT := 96.0
 const CORNER_RADIUS := 10
+const COST_FONT_SIZE := 44
+const NAME_FONT_SIZE := 32
+const ART_FONT_SIZE := 72
+const TYPE_FONT_SIZE := 22
+const DESCRIPTION_FONT_SIZE := 28
 const BORDER_WIDTH := 3
 const UNPLAYABLE_ALPHA := 0.55
 const TEXT_COLOR := Color("f2f2f2")
@@ -44,10 +49,10 @@ func _init() -> void:
 	add_child(column)
 
 	var header := HBoxContainer.new()
-	cost_label = _make_label(24)
-	cost_label.custom_minimum_size = Vector2(36, 0)
+	cost_label = _make_label(COST_FONT_SIZE)
+	cost_label.custom_minimum_size = Vector2(52, 0)
 	cost_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label = _make_label(18)
+	name_label = _make_label(NAME_FONT_SIZE)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header.add_child(cost_label)
@@ -57,14 +62,14 @@ func _init() -> void:
 	var art := ColorRect.new()
 	art.color = Color(0, 0, 0, 0.3)
 	art.custom_minimum_size = Vector2(0, ART_HEIGHT)
-	art_label = _make_label(40)
+	art_label = _make_label(ART_FONT_SIZE)
 	art_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	art_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	art.add_child(art_label)
 	column.add_child(art)
 
-	type_label = _make_label(13)
+	type_label = _make_label(TYPE_FONT_SIZE)
 	type_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(type_label)
 
@@ -72,7 +77,7 @@ func _init() -> void:
 	description_label.bbcode_enabled = true
 	description_label.scroll_active = false
 	description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	description_label.add_theme_font_size_override("normal_font_size", 16)
+	description_label.add_theme_font_size_override("normal_font_size", DESCRIPTION_FONT_SIZE)
 	description_label.add_theme_color_override("default_color", TEXT_COLOR)
 	column.add_child(description_label)
 

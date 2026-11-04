@@ -6,8 +6,8 @@
 ## 1. TL;DR
 
 - **Dự án:** game thẻ bài roguelike kiểu *Slay the Spire*, **Godot 4.7.2 / GDScript**, 1920x1080, renderer Compatibility.
-- **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã xong và được test rất kỹ (**506 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **UI mới ở mốc 3.1** (hiển thị một thẻ: `CardTextFormatter`, `CardView`, `CardUI`); **chưa có** `BattleScene`, tay bài, quái/status trên màn hình, menu, bản đồ, cửa hàng, nhân vật thứ hai, asset.
-- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, 2.3, **2.4** (commit `6c07cd7`). Mốc **3.1** nằm trên nhánh `claude/phase-3-1-card-ui` (chưa gộp, chờ người dùng bảo "merge"). **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
+- **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã xong và được test rất kỹ (**556 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **UI mới ở mốc 3.2** (3.1: thẻ `CardTextFormatter`/`CardView`/`CardUI`; 3.2: `StatusView`, `IntentView`, `StatusIconUI`, `HealthBarUI`, `CombatantUI`, `EnemyUI`, `IconLibrary`); **chưa có** `BattleScene`, tay bài, kéo thả, potion/relic trên màn hình, menu, bản đồ, cửa hàng, nhân vật thứ hai, sprite quái.
+- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, 2.3, **2.4** (commit `6c07cd7`). Mốc **3.1** đã gộp (`b6b522f`). Mốc **3.2** nằm trên nhánh `claude/phase-3-2-combatant-ui` (chưa gộp, chờ người dùng bảo "merge"). **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
 - **Đã duyệt:** kế hoạch Giai đoạn 3 gồm các mốc 3.1 (thẻ), 3.2 (quái + status + ý định), 3.3 (`BattleScene`, tay bài, năng lượng, kết thúc lượt; gom registry thành `GameData`), 3.4 (kéo thả + mũi tên nhắm), 3.5 (potion/relic/tooltip), 3.6 (hiệu ứng). **Nội dung game bằng tiếng Anh.** Asset: tự vẽ icon/khung bằng SVG (tác phẩm gốc, CC0) + UI/font/âm thanh Kenney CC0 từ mirror `ETdoFresh/kenney.nl` (đã đọc license từng pack) + 0x72 DungeonTileset II (CC0, người dùng tải từ itch.io vì sandbox không tải được). Ghi mọi asset vào `assets/CREDITS.md` khi nhập.
 - **Việc đầu tiên của session mới:** dựng môi trường (mục 4), chạy test để xác nhận, rồi hỏi người dùng chọn A/B/C (đừng tự quyết).
 
@@ -158,7 +158,8 @@ tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push
 | 2.2 | Relic | Xong, trên `main` | 393 |
 | **2.3** | Potion, X-cost, nâng cấp thẻ + lint | **Xong, đã gộp** | **466** |
 | **2.4** | Quái có status đầu trận (`starting_statuses`), Spiker (Thorns), Toxic Slug (Poison) | **Xong, đã gộp** (bỏ phần "bot dùng potion": đo thực tế bot đã dùng ~0,7 potion/trận) | **479** |
-| **3.1** | `CardTextFormatter` + `CardView` + `CardUI` (+ công cụ `tools/capture_cards.gd` chụp ảnh) | **Xong, trên nhánh `claude/phase-3-1-card-ui`, chưa gộp** | **506** |
+| **3.1** | `CardTextFormatter` + `CardView` + `CardUI` (+ `tools/capture_cards.gd` chụp ảnh) | **Xong, đã gộp** | **506** |
+| **3.2** | Icon SVG tự vẽ (`tools/generate_icons.py`, 18 icon), font Kenney Pixel, `StatusView`/`IntentView`, `StatusIconUI`/`HealthBarUI`/`CombatantUI`/`EnemyUI` (+ `tools/capture_combatants.gd`) | **Xong, trên nhánh `claude/phase-3-2-combatant-ui`, chưa gộp** | **556** |
 | 3 | UI chiến đấu | **Chưa làm** | - |
 | 4 | Run: map, thưởng, shop, lửa trại, sự kiện | Chưa làm | - |
 | 5 | Menu chính, chọn nhân vật, lưu/tiếp tục, cài đặt | Chưa làm | - |
@@ -185,7 +186,8 @@ Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `ass
 
 1. Hỏi người dùng chọn **A / B / C** (mục 1). Khuyến nghị: **gộp 2.3 trước** (`tools/gh_merge.py`), vì nó đã đủ test.
 2. **2.4 đã xong** (`starting_statuses`, Spiker, Toxic Slug).
-3. **Giai đoạn 3 (UI chiến đấu)** đang làm theo kế hoạch đã duyệt (xem mục Trạng thái): **tiếp theo là mốc 3.2** (`CombatantUI`/`EnemyUI`: máu, giáp, icon status, ý định quái từ `IntentInfo`; icon tự vẽ SVG). UI **không bao giờ sửa lõi**, chỉ gọi `play_card/use_potion/end_player_turn` và đọc trạng thái qua Signal; dữ liệu hiển thị đi qua view-model (như `CardView`), không để UI tự tính luật. Mỗi mốc: test headless + chụp ảnh `xvfb` (`tools/capture_*.gd`) gửi người dùng. **Lưu ý harness:** test không có assertion nào bị tính là FAIL (bắt test chết vì lỗi script giữa chừng).
+3. **Giai đoạn 3 (UI chiến đấu)** đang làm theo kế hoạch đã duyệt (xem mục Trạng thái): **tiếp theo là mốc 3.3** (`BattleScene`: tay bài + năng lượng + nút End Turn + hiển thị pile, nối Signal của `BattleController` xuống `CardUI`/`EnemyUI`/`CombatantUI`; gom registry thành `GameData`; click để chơi thẻ, chọn mục tiêu bằng click). UI **không bao giờ sửa lõi**, chỉ gọi `play_card/use_potion/end_player_turn` và đọc trạng thái qua Signal; dữ liệu hiển thị đi qua view-model (như `CardView`), không để UI tự tính luật. Mỗi mốc: test headless + chụp ảnh `xvfb` (`tools/capture_*.gd`) gửi người dùng. **Lưu ý harness:** test không có assertion nào bị tính là FAIL (bắt test chết vì lỗi script giữa chừng); lỗi script TRONG hàm xử lý Signal thì KHÔNG làm test fail, nên test vòng đời Signal phải kiểm tra trực tiếp `get_connections()` và test rò rỉ dùng `Performance.OBJECT_ORPHAN_NODE_COUNT` (đo sau khi trạng thái ổn định).
+   **Bẫy đã gặp ở UI:** (1) `Array[StringName].sort()` so sánh theo địa chỉ bộ nhớ -> thứ tự không ổn định giữa các lần chạy; luôn `sort_custom` theo `String(...)`. (2) Status Artifact chặn debuff gắn SAU nó (đúng luật): khi dựng ví dụ/test, gắn Artifact CUỐI CÙNG hoặc đừng dùng. (3) Font Kenney Pixel nhỏ: dùng cỡ chữ lớn (thẻ 28-44, nhãn 24-32). (4) Sửa file `.gd` bằng script: thụt lề là TAB. (5) `ProgressBar` tự giới hạn giá trị. Ảnh chụp: `xvfb-run -a godot --rendering-driver opengl3 --path . -s res://tools/capture_*.gd --resolution 1920x1080 -- --out=/tmp/x.png` (project stretch canvas_items 1920x1080 nên phải truyền --resolution đúng).
 4. Sau đó Giai đoạn 4 (run), 5 (menu/meta)... theo bảng mục 10.
 
 ## 14. Prompt khởi động cho session mới (dán nguyên văn)
