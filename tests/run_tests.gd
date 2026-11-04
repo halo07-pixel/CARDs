@@ -47,11 +47,14 @@ func _run_file(path: String) -> Array[int]:
 	var failed := 0
 	for method in methods:
 		instance.failures.clear()
+		instance.assertions = 0
 		if instance.has_method("before_each"):
 			await instance.call("before_each")
 		await instance.call(method)
 		if instance.has_method("after_each"):
 			await instance.call("after_each")
+		if instance.assertions == 0:
+			instance.failures.append("không có assertion nào chạy (test có thể đã chết vì lỗi script)")
 		if instance.failures.is_empty():
 			passed += 1
 			print("ok    %s :: %s" % [path.get_file(), method])

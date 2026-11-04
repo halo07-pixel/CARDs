@@ -6,9 +6,9 @@
 ## 1. TL;DR
 
 - **Dự án:** game thẻ bài roguelike kiểu *Slay the Spire*, **Godot 4.7.2 / GDScript**, 1920x1080, renderer Compatibility.
-- **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã gần xong và được test rất kỹ (**466 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **Chưa có UI, menu, bản đồ, cửa hàng, nhân vật thứ hai, asset** - tức là **chưa có gì để người dùng nhìn hay bấm**.
-- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, **2.3** (potion, X-cost, nâng cấp thẻ) - đã gộp (commit merge `b519357`, 466 test đạt). **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
-- **Quyết định đang chờ người dùng:** hướng đi tiếp theo (xem mục 13): A = gộp 2.3 + làm nhanh 2.4 rồi UI; B = gộp 2.3 và nhảy thẳng sang UI (Giai đoạn 3); C = giữ cách làm kỹ như cũ.
+- **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã xong và được test rất kỹ (**506 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **UI mới ở mốc 3.1** (hiển thị một thẻ: `CardTextFormatter`, `CardView`, `CardUI`); **chưa có** `BattleScene`, tay bài, quái/status trên màn hình, menu, bản đồ, cửa hàng, nhân vật thứ hai, asset.
+- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, 2.3, **2.4** (commit `6c07cd7`). Mốc **3.1** nằm trên nhánh `claude/phase-3-1-card-ui` (chưa gộp, chờ người dùng bảo "merge"). **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
+- **Đã duyệt:** kế hoạch Giai đoạn 3 gồm các mốc 3.1 (thẻ), 3.2 (quái + status + ý định), 3.3 (`BattleScene`, tay bài, năng lượng, kết thúc lượt; gom registry thành `GameData`), 3.4 (kéo thả + mũi tên nhắm), 3.5 (potion/relic/tooltip), 3.6 (hiệu ứng). **Nội dung game bằng tiếng Anh.** Asset: tự vẽ icon/khung bằng SVG (tác phẩm gốc, CC0) + UI/font/âm thanh Kenney CC0 từ mirror `ETdoFresh/kenney.nl` (đã đọc license từng pack) + 0x72 DungeonTileset II (CC0, người dùng tải từ itch.io vì sandbox không tải được). Ghi mọi asset vào `assets/CREDITS.md` khi nhập.
 - **Việc đầu tiên của session mới:** dựng môi trường (mục 4), chạy test để xác nhận, rồi hỏi người dùng chọn A/B/C (đừng tự quyết).
 
 ## 2. Mục tiêu và phạm vi
@@ -55,7 +55,7 @@ unzip -oq g.zip && rm g.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64 && mv G
 export PATH=$HOME/bin:$PATH
 git clone https://github.com/halo07-pixel/CARDs.git /home/claude/cardgame && cd /home/claude/cardgame   # repo public: clone không cần token
 git fetch origin claude/phase-2-3-potions-xcost-upgrades && git checkout claude/phase-2-3-potions-xcost-upgrades   # nếu 2.3 chưa gộp
-bash tools/run_tests.sh          # kỳ vọng: 466 passed (nhánh 2.3) hoặc 393 (main khi chưa gộp 2.3)
+bash tools/run_tests.sh          # kỳ vọng: 506 passed (nhánh 3.1) / 479 (main)
 ```
 
 Bẫy đã gặp:
@@ -156,8 +156,9 @@ tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push
 | 1.3c | CharacterData, CardRegistry, BattleFactory, bot, mô phỏng | Xong | 278 |
 | 2.1 | Sự kiện/trigger, Poison/Thorns/..., Power, HEAL/LOSE_HP | Xong, trên `main` | 360 |
 | 2.2 | Relic | Xong, trên `main` | 393 |
-| **2.3** | Potion, X-cost, nâng cấp thẻ + lint | **Xong, trên nhánh, chưa gộp** | **466** |
-| 2.4 | Quái có status đầu trận (Spiker/Toxic Slug), bot dùng potion tốt hơn, mô phỏng tổng hợp | Chưa làm (có thể bỏ/làm gọn) | - |
+| **2.3** | Potion, X-cost, nâng cấp thẻ + lint | **Xong, đã gộp** | **466** |
+| **2.4** | Quái có status đầu trận (`starting_statuses`), Spiker (Thorns), Toxic Slug (Poison) | **Xong, đã gộp** (bỏ phần "bot dùng potion": đo thực tế bot đã dùng ~0,7 potion/trận) | **479** |
+| **3.1** | `CardTextFormatter` + `CardView` + `CardUI` (+ công cụ `tools/capture_cards.gd` chụp ảnh) | **Xong, trên nhánh `claude/phase-3-1-card-ui`, chưa gộp** | **506** |
 | 3 | UI chiến đấu | **Chưa làm** | - |
 | 4 | Run: map, thưởng, shop, lửa trại, sự kiện | Chưa làm | - |
 | 5 | Menu chính, chọn nhân vật, lưu/tiếp tục, cài đặt | Chưa làm | - |
@@ -169,10 +170,10 @@ tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push
 
 1. `src/core/battle_controller.gd` dài **407 dòng** (> 400 điển hình của quy chuẩn, < 800 trần mềm). Nếu thêm nữa nên tách (vd. lượt quái ra một lớp riêng).
 2. `BattleFactory.create` có **14 tham số** tuần tự -> nên gom registry thành một đối tượng `GameData`/loadout khi bắt đầu làm UI/run.
-3. **Cân bằng chỉ là placeholder:** quái đơn quá dễ; mang cả 10 relic thì gần như không mất máu; `GreedyBot` dùng potion rất dè dặt (chỉ khi hạ được quái hoặc nguy hiểm) nên trong mô phỏng gần như không dùng potion (đường dùng potion của nó chỉ được test bằng tình huống dựng sẵn). RandomBot dùng potion nhiều.
+3. **Cân bằng chỉ là placeholder:** quái đơn quá dễ (bot thắng ~100%); mang cả 10 relic thì gần như không mất máu. Đo ở 2.4: `GreedyBot` dùng khoảng 0,7-0,8 potion/trận khi mang 3 potion (không phải "gần như không dùng" như ghi trước đây).
 4. Sát thương của trigger và của potion dùng công thức chuẩn (Strength có tác dụng) - khác Slay the Spire (Thorns/potion không nhận Strength).
 5. Các lần phá code **không bị bắt** đã được phân tích và đều tương đương về hành vi (chỉ khác thông báo/cảnh báo log): bỏ `break` khi người chơi tự chết giữa thẻ (resolver đã tự từ chối nguồn đã chết); bỏ nhánh "thiếu registry" của relic trong `BattleFactory` (chốt kế tiếp bắt cùng kết quả).
-6. Chưa có: chiêu quái theo ngưỡng máu, boss nhiều pha, quái triệu hồi, thẻ sinh ra trong bộ bài (Wound/Dazed), hiệu ứng "bỏ thẻ"/"exhaust ngẫu nhiên", `EnemyData.starting_statuses`, i18n. Không lưu giữa trận (thiết kế: chỉ lưu giữa các phòng).
+6. Chưa có: chiêu quái theo ngưỡng máu, boss nhiều pha, quái triệu hồi, thẻ sinh ra trong bộ bài (Wound/Dazed), hiệu ứng "bỏ thẻ"/"exhaust ngẫu nhiên", i18n. Không lưu giữa trận (thiết kế: chỉ lưu giữa các phòng).
 7. **`RunState` (autoload) chưa nối với trận đấu.** Hợp đồng dự kiến: `RunState` giữ id (`deck`, `relics`, `potions` là `Array[String]`, `hp`, `max_hp`, `gold`, `seed`); chuyển sang `Array[StringName]` khi gọi `BattleFactory`; sau trận: `RunState.hp = player.hp`, `RunState.potions = controller.potions.to_ids()`; thưởng/xóa thẻ làm ở tầng run.
 8. Pipeline chụp ảnh `xvfb` chưa kiểm tra lại sau reset sandbox.
 
@@ -183,8 +184,8 @@ Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `ass
 ## 13. Bước tiếp theo đề xuất
 
 1. Hỏi người dùng chọn **A / B / C** (mục 1). Khuyến nghị: **gộp 2.3 trước** (`tools/gh_merge.py`), vì nó đã đủ test.
-2. Nếu làm **2.4** (gọn): `EnemyData.starting_statuses`, quái Spiker (Thorns) và Toxic Slug (Poison), bot dùng potion chủ động hơn. Trình bày thiết kế -> chờ duyệt như thường lệ.
-3. **Giai đoạn 3 (UI chiến đấu)** - gợi ý để trình bày thiết kế: `BattleScene` sở hữu một `BattleController` và nối Signal -> UI; các scene `HandUI`, `CardUI` (nhận `CardData` + `CardInstance.uid`, phát `card_dropped`), `CombatantUI` (máu, giáp, biểu tượng status, ý định), `EnergyOrb`, bộ đếm các pile, `PotionBeltUI`, `RelicBarUI`, nút kết thúc lượt, mũi tên nhắm. UI **không bao giờ sửa lõi**, chỉ gọi `play_card/use_potion/end_player_turn` và đọc trạng thái; viết bộ định dạng mô tả thẻ (`{damage}`...); dùng hình khối/Label làm placeholder rồi thay asset ở Giai đoạn 7; chụp ảnh từng trạng thái (tay bài, kéo thả, ý định quái, nhận sát thương, thắng/thua) cho người dùng.
+2. **2.4 đã xong** (`starting_statuses`, Spiker, Toxic Slug).
+3. **Giai đoạn 3 (UI chiến đấu)** đang làm theo kế hoạch đã duyệt (xem mục Trạng thái): **tiếp theo là mốc 3.2** (`CombatantUI`/`EnemyUI`: máu, giáp, icon status, ý định quái từ `IntentInfo`; icon tự vẽ SVG). UI **không bao giờ sửa lõi**, chỉ gọi `play_card/use_potion/end_player_turn` và đọc trạng thái qua Signal; dữ liệu hiển thị đi qua view-model (như `CardView`), không để UI tự tính luật. Mỗi mốc: test headless + chụp ảnh `xvfb` (`tools/capture_*.gd`) gửi người dùng. **Lưu ý harness:** test không có assertion nào bị tính là FAIL (bắt test chết vì lỗi script giữa chừng).
 4. Sau đó Giai đoạn 4 (run), 5 (menu/meta)... theo bảng mục 10.
 
 ## 14. Prompt khởi động cho session mới (dán nguyên văn)
