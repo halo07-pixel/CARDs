@@ -37,6 +37,12 @@ func test_enemy_moves_only_reference_existing_statuses() -> void:
 			_check_effects(move.effects, "quái %s/%s" % [id, move.id])
 
 
+func test_enemy_starting_statuses_only_reference_existing_statuses() -> void:
+	for id in _enemies.all_ids():
+		for status_id: StringName in _enemies.get_enemy(id).starting_statuses:
+			assert_true(_statuses.has_status(status_id), "quái %s mang status không tồn tại: %s" % [id, status_id])
+
+
 func test_status_triggers_only_reference_existing_statuses() -> void:
 	for id in _statuses.all_ids():
 		_check_triggers(_statuses.get_status(id).triggers, "status " + String(id))

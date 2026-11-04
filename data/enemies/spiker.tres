@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_move.gd" id="1_pttx2"]
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="2_b7imn"]
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="3_yh8rd"]
+
+[sub_resource type="Resource" id="Resource_4gpax"]
+script = ExtResource("2_b7imn")
+amount = 7
+
+[sub_resource type="Resource" id="Resource_6d3hh"]
+script = ExtResource("1_pttx2")
+id = &"bash"
+display_name = "Bash"
+effects = Array[ExtResource("2_b7imn")]([SubResource("Resource_4gpax")])
+
+[sub_resource type="Resource" id="Resource_0bynn"]
+script = ExtResource("2_b7imn")
+type = 4
+amount = 2
+status_id = &"thorns"
+target = 0
+
+[sub_resource type="Resource" id="Resource_8an8g"]
+script = ExtResource("1_pttx2")
+id = &"bristle"
+display_name = "Bristle"
+effects = Array[ExtResource("2_b7imn")]([SubResource("Resource_0bynn")])
+
+[resource]
+script = ExtResource("3_yh8rd")
+id = &"spiker"
+display_name = "Spiker"
+max_hp = 28
+moves = Array[ExtResource("1_pttx2")]([SubResource("Resource_6d3hh"), SubResource("Resource_8an8g")])
+opening_move_id = &"bash"
+icon_id = &"spiker"
+starting_statuses = {
+&"thorns": 3
+}

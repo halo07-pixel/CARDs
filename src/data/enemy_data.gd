@@ -13,6 +13,8 @@ enum PatternKind { SEQUENCE, WEIGHTED }
 @export var sequence: Array[StringName] = []  ## chỉ dùng với SEQUENCE; rỗng = theo thứ tự `moves`
 @export var opening_move_id: StringName = &""  ## chiêu đầu tiên (tùy chọn)
 @export var icon_id: StringName = &""
+## Status quái mang sẵn khi vào trận: id status -> số stack (> 0). Ví dụ {&"thorns": 3}.
+@export var starting_statuses: Dictionary = {}
 
 
 func find_move(move_id: StringName) -> EnemyMove:
@@ -62,4 +64,16 @@ func validate() -> Array[String]:
 	for move_id in sequence:
 		if find_move(move_id) == null:
 			errors.append("sequence chứa chiêu không tồn tại: '%s'" % move_id)
+	errors.append_array(_validate_starting_statuses())
+	return errors
+
+
+func _validate_starting_statuses() -> Array[String]:
+	var errors: Array[String] = []
+	for key: Variant in starting_statuses:
+		var amount: Variant = starting_statuses[key]
+		if not (key is StringName or key is String) or String(key).is_empty():
+			errors.append("starting_statuses: id status không hợp lệ (%s)" % [key])
+		elif not amount is int or amount <= 0:
+			errors.append("starting_statuses[%s]: số stack phải là số nguyên > 0 (hiện %s)" % [key, amount])
 	return errors

@@ -13,6 +13,9 @@ const SCENARIOS := [
 	["goblin + slime", [&"goblin", &"slime"]],
 	["acolyte + goblin", [&"acolyte", &"goblin"]],
 	["trio", [&"slime", &"goblin", &"acolyte"]],
+	["spiker", [&"spiker"]],
+	["toxic_slug", [&"toxic_slug"]],
+	["spiker + toxic_slug", [&"spiker", &"toxic_slug"]],
 ]
 
 

@@ -1,6 +1,7 @@
 extends SceneTree
-## Sinh 3 quái mẫu. Chạy: godot --headless --path . -s res://tools/generate_starter_enemies.gd
+## Sinh các quái mẫu. Chạy: godot --headless --path . -s res://tools/generate_starter_enemies.gd
 ## Sau khi sinh, các file .tres là nguồn dữ liệu chính (sửa tay hoặc trong editor đều được).
+## File đã tồn tại thì BỎ QUA (không ghi đè, không làm nhiễu diff); thêm `-- --force` để ghi đè tất cả.
 
 const OUT_DIR := "res://data/enemies/"
 const T := EffectData.Type
@@ -12,6 +13,8 @@ func _initialize() -> void:
 	ok = _save(_slime()) and ok
 	ok = _save(_goblin()) and ok
 	ok = _save(_acolyte()) and ok
+	ok = _save(_spiker()) and ok
+	ok = _save(_toxic_slug()) and ok
 	quit(0 if ok else 1)
 
 
@@ -35,6 +38,28 @@ func _acolyte() -> EnemyData:
 	var slash := _move(&"slash", "Slash", [EffectData.create(T.DAMAGE, 6, G.TARGET_ENEMY)])
 	var order: Array[StringName] = [&"ritual", &"slash", &"slash"]
 	return _enemy(&"acolyte", "Acolyte", 38, EnemyData.PatternKind.SEQUENCE, [ritual, slash], order)
+
+
+## Vào trận với 3 Thorns: đánh nó bằng nhiều đòn nhỏ thì tự hại mình. Chiêu xen kẽ đánh và tăng Thorns.
+func _spiker() -> EnemyData:
+	var bash := _move(&"bash", "Bash", [EffectData.create(T.DAMAGE, 7, G.TARGET_ENEMY)])
+	var bristle := _move(&"bristle", "Bristle", [EffectData.create(T.APPLY_STATUS, 2, G.SELF, 1, &"thorns")])
+	var data := _enemy(&"spiker", "Spiker", 28, EnemyData.PatternKind.SEQUENCE, [bash, bristle], [])
+	data.opening_move_id = &"bash"
+	data.starting_statuses = {&"thorns": 3}
+	return data
+
+
+## Mở màn bằng Spit (gắn Poison), sau đó bốc ngẫu nhiên: ưu tiên Spit, không lặp Spit quá 2 lần liền.
+func _toxic_slug() -> EnemyData:
+	var spit := _move(&"spit", "Spit", [
+		EffectData.create(T.DAMAGE, 4, G.TARGET_ENEMY),
+		EffectData.create(T.APPLY_STATUS, 3, G.TARGET_ENEMY, 1, &"poison"),
+	], 3, 2)
+	var tackle := _move(&"tackle", "Tackle", [EffectData.create(T.DAMAGE, 7, G.TARGET_ENEMY)], 2, 0)
+	var data := _enemy(&"toxic_slug", "Toxic Slug", 20, EnemyData.PatternKind.WEIGHTED, [spit, tackle], [])
+	data.opening_move_id = &"spit"
+	return data
 
 
 func _move(id: StringName, display_name: String, effects: Array[EffectData],
@@ -62,11 +87,15 @@ func _enemy(id: StringName, display_name: String, max_hp: int, pattern: EnemyDat
 
 
 func _save(data: EnemyData) -> bool:
+	var path := OUT_DIR + String(data.id) + ".tres"
+	if FileAccess.file_exists(path) and not OS.get_cmdline_user_args().has("--force"):
+		print("bỏ qua ", data.id, " (đã tồn tại)")
+		return true
 	var errors := data.validate()
 	if not errors.is_empty():
 		printerr("Quái %s không hợp lệ: %s" % [data.id, errors])
 		return false
-	var err := ResourceSaver.save(data, OUT_DIR + String(data.id) + ".tres")
+	var err := ResourceSaver.save(data, path)
 	if err != OK:
 		printerr("Lưu %s thất bại (lỗi %d)" % [data.id, err])
 		return false

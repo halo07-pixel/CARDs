@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="EnemyData" format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_move.gd" id="1_d7gnc"]
+[ext_resource type="Script" path="res://src/data/effect_data.gd" id="2_bgwcb"]
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="3_ormuc"]
+
+[sub_resource type="Resource" id="Resource_qsdmc"]
+script = ExtResource("2_bgwcb")
+amount = 4
+
+[sub_resource type="Resource" id="Resource_d3ugh"]
+script = ExtResource("2_bgwcb")
+type = 4
+amount = 3
+status_id = &"poison"
+
+[sub_resource type="Resource" id="Resource_w2pbj"]
+script = ExtResource("1_d7gnc")
+id = &"spit"
+display_name = "Spit"
+effects = Array[ExtResource("2_bgwcb")]([SubResource("Resource_qsdmc"), SubResource("Resource_d3ugh")])
+weight = 3
+max_consecutive = 2
+
+[sub_resource type="Resource" id="Resource_10bkf"]
+script = ExtResource("2_bgwcb")
+amount = 7
+
+[sub_resource type="Resource" id="Resource_0r6w1"]
+script = ExtResource("1_d7gnc")
+id = &"tackle"
+display_name = "Tackle"
+effects = Array[ExtResource("2_bgwcb")]([SubResource("Resource_10bkf")])
+weight = 2
+
+[resource]
+script = ExtResource("3_ormuc")
+id = &"toxic_slug"
+display_name = "Toxic Slug"
+max_hp = 20
+moves = Array[ExtResource("1_d7gnc")]([SubResource("Resource_w2pbj"), SubResource("Resource_0r6w1")])
+pattern = 1
+opening_move_id = &"spit"
+icon_id = &"toxic_slug"

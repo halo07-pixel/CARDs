@@ -75,8 +75,8 @@ func test_find_move() -> void:
 
 func test_registry_loads_valid_starter_enemies() -> void:
 	var registry := EnemyRegistry.load_from_dir(ENEMY_DIR)
-	assert_eq(registry.size(), 3, "phải nạp đủ 3 quái mẫu (file lỗi/trùng id bị loại)")
-	for enemy_id in [&"slime", &"goblin", &"acolyte"]:
+	assert_eq(registry.size(), 5, "phải nạp đủ 5 quái mẫu (file lỗi/trùng id bị loại)")
+	for enemy_id in [&"slime", &"goblin", &"acolyte", &"spiker", &"toxic_slug"]:
 		assert_true(registry.has_enemy(enemy_id), String(enemy_id))
 		assert_eq(registry.get_enemy(enemy_id).validate(), [] as Array[String], String(enemy_id))
 	assert_eq(registry.get_enemy(&"slime").max_hp, 22)

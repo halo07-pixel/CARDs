@@ -83,10 +83,21 @@ static func create_from_data(p_player: Combatant, cards: Array[CardInstance], da
 			push_error("BattleController.create_from_data: EnemyData null")
 			return null
 		var unit := EnemyUnit.create(datas[i], rng, StringName("%s_%d" % [datas[i].id, i]))
-		if unit == null:
+		if unit == null or not _apply_starting_statuses(unit, registry):
 			return null
 		units.append(unit)
 	return create(p_player, cards, units, registry, seed_value, p_config, rng, p_relics, p_potions)
+
+
+## Gắn status quái mang sẵn (EnemyData.starting_statuses). Trả false (kèm log) nếu status không tồn tại.
+static func _apply_starting_statuses(unit: EnemyUnit, registry: StatusRegistry) -> bool:
+	for status_id: StringName in unit.data.starting_statuses:
+		var status := registry.get_status(status_id) if registry != null else null
+		if status == null:
+			push_error("BattleController: quái '%s' mang status không tồn tại '%s'" % [unit.data.id, status_id])
+			return false
+		unit.combatant.add_status(status, unit.data.starting_statuses[status_id])
+	return true
 
 
 func start_battle() -> bool:
