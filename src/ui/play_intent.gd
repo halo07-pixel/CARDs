@@ -26,35 +26,35 @@ func is_targeting() -> bool:
 func select_card(card: CardInstance, controller: BattleController) -> Decision:
 	if card != null and card == selected:
 		selected = null
-		return _decision(Outcome.CANCELLED, card)
+		return make_decision(Outcome.CANCELLED, card)
 	var reason := controller.play_rejection_reason(card)
 	if reason != &"":
-		return _decision(Outcome.REJECTED, card, null, reason)  # giữ nguyên lựa chọn cũ (nếu có)
+		return make_decision(Outcome.REJECTED, card, null, reason)  # giữ nguyên lựa chọn cũ (nếu có)
 	if card.data.target_mode != CardData.TargetMode.SINGLE_ENEMY:
 		selected = null
-		return _decision(Outcome.PLAY_NOW, card)
+		return make_decision(Outcome.PLAY_NOW, card)
 	var targets := controller.valid_targets(card)
 	if targets.is_empty():
-		return _decision(Outcome.REJECTED, card, null, BattleController.REASON_INVALID_TARGET)
+		return make_decision(Outcome.REJECTED, card, null, BattleController.REASON_INVALID_TARGET)
 	if targets.size() == 1:
 		selected = null
-		return _decision(Outcome.PLAY_NOW, card, targets[0])
+		return make_decision(Outcome.PLAY_NOW, card, targets[0])
 	selected = card
-	return _decision(Outcome.NEED_TARGET, card)
+	return make_decision(Outcome.NEED_TARGET, card)
 
 
 func choose_target(unit: EnemyUnit, controller: BattleController) -> Decision:
 	if selected == null:
-		return _decision(Outcome.NOTHING)
+		return make_decision(Outcome.NOTHING)
 	var card := selected
 	var reason := controller.play_rejection_reason(card)
 	if reason != &"":
 		selected = null  # thẻ không còn chơi được (hết năng lượng, đổi lượt...)
-		return _decision(Outcome.REJECTED, card, null, reason)
+		return make_decision(Outcome.REJECTED, card, null, reason)
 	if not controller.valid_targets(card).has(unit):
-		return _decision(Outcome.REJECTED, card, null, BattleController.REASON_INVALID_TARGET)
+		return make_decision(Outcome.REJECTED, card, null, BattleController.REASON_INVALID_TARGET)
 	selected = null
-	return _decision(Outcome.PLAY_NOW, card, unit)
+	return make_decision(Outcome.PLAY_NOW, card, unit)
 
 
 ## Bỏ chọn mục tiêu. Trả true nếu đang có thẻ được chọn.
@@ -72,7 +72,7 @@ func sync(controller: BattleController) -> bool:
 	return false
 
 
-func _decision(outcome: Outcome, card: CardInstance = null, target: EnemyUnit = null,
+static func make_decision(outcome: Outcome, card: CardInstance = null, target: EnemyUnit = null,
 		reason: StringName = &"") -> Decision:
 	var decision := Decision.new()
 	decision.outcome = outcome

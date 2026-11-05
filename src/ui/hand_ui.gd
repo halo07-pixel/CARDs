@@ -9,11 +9,13 @@ signal card_clicked(card: CardInstance)
 const WIDTH := 1500.0
 const CARD_GAP := 14.0
 const SELECTED_RAISE := 40.0  ## thẻ thường nằm thấp hơn thẻ đang chọn đúng chừng này
+const HOVER_RAISE := 24.0  ## thẻ đang trỏ chuột nhô lên chừng này (vẫn thấp hơn thẻ đang chọn)
 
 var controller: BattleController = null
 var card_uis: Array[CardUI] = []
 var _cards_by_uid: Dictionary = {}
 var _selected_uid: int = -1
+var _hovered_uid: int = -1
 var _refresh_pending: bool = false
 
 
@@ -45,6 +47,7 @@ func unbind() -> void:
 	controller.player.status_changed.disconnect(_on_player_status_changed)
 	controller = null
 	_selected_uid = -1
+	_hovered_uid = -1
 	refresh()
 
 
@@ -63,9 +66,13 @@ func refresh() -> void:
 		var card_ui := CardUI.new()
 		card_ui.show_view(CardView.build(card, controller.player, null, controller.can_play(card)))
 		card_ui.clicked.connect(_on_card_ui_clicked)
+		card_ui.mouse_entered.connect(_on_card_hover_changed.bind(card.uid, true))
+		card_ui.mouse_exited.connect(_on_card_hover_changed.bind(card.uid, false))
 		add_child(card_ui)
 		card_uis.append(card_ui)
 		_cards_by_uid[card.uid] = card
+	if not _cards_by_uid.has(_hovered_uid):
+		_hovered_uid = -1
 	_apply_selection()
 
 
@@ -92,6 +99,22 @@ func set_selected(card: CardInstance) -> void:
 	_apply_selection()
 
 
+## Thẻ đang được trỏ chuột (nhô lên, vẽ trên cùng). Null = không có.
+func set_hovered(card: CardInstance) -> void:
+	_hovered_uid = card.uid if card != null else -1
+	_layout()
+
+
+## Vẽ lại thẻ `card` với số đã tính theo mục tiêu `target` (Vulnerable...). target null = số thường.
+func set_preview_target(card: CardInstance, target: EnemyUnit) -> void:
+	if controller == null or card == null:
+		return
+	for card_ui in card_uis:
+		if card_ui.view.uid == card.uid:
+			card_ui.show_view(CardView.build(card, controller.player, target.combatant if target != null else null,
+					controller.can_play(card)))
+
+
 func _apply_selection() -> void:
 	for card_ui in card_uis:
 		card_ui.set_highlighted(card_ui.view.uid == _selected_uid)
@@ -111,8 +134,32 @@ func _layout() -> void:
 	for i in count:
 		var card_ui := card_uis[i]
 		card_ui.size = CardUI.CARD_SIZE
-		var raised := card_ui.view.uid == _selected_uid
-		card_ui.position = Vector2(start + step * i, 0.0 if raised else SELECTED_RAISE)
+		card_ui.position = Vector2(start + step * i, _row_y(card_ui.view.uid))
+	_restack()
+
+
+func _row_y(uid: int) -> float:
+	if uid == _selected_uid:
+		return 0.0
+	return SELECTED_RAISE - HOVER_RAISE if uid == _hovered_uid else SELECTED_RAISE
+
+
+## Thứ tự vẽ: theo vị trí trong tay; thẻ đang chọn rồi thẻ đang trỏ chuột vẽ trên cùng.
+func _restack() -> void:
+	for i in card_uis.size():
+		move_child(card_uis[i], i)
+	for uid in [_selected_uid, _hovered_uid]:
+		for card_ui in card_uis:
+			if card_ui.view.uid == uid:
+				move_child(card_ui, -1)
+
+
+func _on_card_hover_changed(uid: int, hovered: bool) -> void:
+	if hovered:
+		_hovered_uid = uid
+	elif _hovered_uid == uid:
+		_hovered_uid = -1
+	_layout()
 
 
 func _on_card_ui_clicked(view: CardView) -> void:

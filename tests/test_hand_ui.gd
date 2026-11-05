@@ -167,3 +167,138 @@ func test_refreshing_repeatedly_does_not_leak_nodes() -> void:
 		hand.refresh()
 	assert_almost_eq(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT), orphans_before, 0.0001)
 	hand.free()
+
+
+func _statuses() -> StatusRegistry:
+	return StatusRegistry.load_from_dir("res://data/statuses")
+
+
+func _y_of(hand: HandUI, index: int) -> float:
+	return hand.card_uis[index].position.y
+
+
+func test_hovering_a_card_raises_it_and_unhovering_restores_it() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var normal_y := _y_of(hand, 1)
+	hand.card_uis[1].mouse_entered.emit()
+	assert_almost_eq(_y_of(hand, 1), HandUI.SELECTED_RAISE - HandUI.HOVER_RAISE, 0.01)
+	assert_almost_eq(_y_of(hand, 0), normal_y, 0.01, "thẻ khác không đổi")
+	hand.card_uis[1].mouse_exited.emit()
+	assert_almost_eq(_y_of(hand, 1), normal_y, 0.01)
+	hand.free()
+
+
+func test_moving_from_one_card_to_the_next_hovers_only_the_new_one() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	hand.card_uis[1].mouse_entered.emit()
+	hand.card_uis[2].mouse_entered.emit()
+	hand.card_uis[1].mouse_exited.emit()
+	assert_almost_eq(_y_of(hand, 2), HandUI.SELECTED_RAISE - HandUI.HOVER_RAISE, 0.01, "thẻ 2 vẫn đang được trỏ")
+	assert_almost_eq(_y_of(hand, 1), HandUI.SELECTED_RAISE, 0.01)
+	hand.free()
+
+
+func test_hovered_card_is_drawn_on_top_and_order_is_restored_afterwards() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	hand.card_uis[1].mouse_entered.emit()
+	assert_eq(hand.get_child(hand.get_child_count() - 1), hand.card_uis[1], "vẽ trên cùng")
+	hand.card_uis[1].mouse_exited.emit()
+	for i in hand.card_uis.size():
+		assert_eq(hand.get_child(i), hand.card_uis[i], "thứ tự vẽ trở lại như cũ")
+	hand.free()
+
+
+func test_selected_card_stays_highest_and_hover_is_drawn_above_it() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	hand.set_selected(controller.deck.get_pile(Deck.HAND)[3])
+	hand.card_uis[3].mouse_entered.emit()
+	assert_almost_eq(_y_of(hand, 3), 0.0, 0.01, "thẻ đang chọn giữ độ cao của nó")
+	hand.card_uis[1].mouse_entered.emit()
+	var last := hand.get_child_count() - 1
+	assert_eq(hand.get_child(last), hand.card_uis[1], "thẻ đang trỏ chuột trên cùng")
+	assert_eq(hand.get_child(last - 1), hand.card_uis[3], "thẻ đang chọn ngay dưới nó")
+	hand.free()
+
+
+func test_hover_is_forgotten_when_the_card_leaves_the_hand() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	hand.set_hovered(card)
+	controller.deck.discard_card(card)
+	hand.flush_pending_refresh()
+	for i in hand.card_uis.size():
+		assert_almost_eq(_y_of(hand, i), HandUI.SELECTED_RAISE, 0.01, "không thẻ nào còn nhô lên")
+	hand.free()
+
+
+func test_hover_survives_a_refresh_of_the_same_card() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[2]
+	hand.set_hovered(card)
+	hand.refresh()
+	assert_almost_eq(_y_of(hand, 2), HandUI.SELECTED_RAISE - HandUI.HOVER_RAISE, 0.01)
+	hand.free()
+
+
+func test_unbind_forgets_the_hover() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	hand.set_hovered(controller.deck.get_pile(Deck.HAND)[0])
+	hand.unbind()
+	hand.bind(controller)
+	for i in hand.card_uis.size():
+		assert_almost_eq(_y_of(hand, i), HandUI.SELECTED_RAISE, 0.01)
+	hand.free()
+
+
+func test_preview_shows_numbers_against_the_target_and_clears() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var ids: Array[StringName] = [&"strike"]
+	var strike := CardRegistry.load_from_dir("res://data/cards").create_instances(ids)[0]  # thẻ thật có mô tả
+	controller.deck.add_to_hand(strike)
+	hand.flush_pending_refresh()
+	var index := controller.deck.get_pile(Deck.HAND).find(strike)
+	controller.enemies[0].combatant.add_status(_statuses().get_status(&"vulnerable"), 1)
+	hand.set_preview_target(strike, controller.enemies[0])
+	assert_true(hand.card_uis[index].description_label.text.contains("9"), "6 x 1.5 Vulnerable")
+	hand.set_preview_target(strike, null)
+	assert_true(hand.card_uis[index].description_label.text.contains("6"))
+	assert_false(hand.card_uis[index].description_label.text.contains("9"))
+	hand.free()
+
+
+func test_preview_keeps_the_highlight_and_ignores_unknown_cards_or_no_battle() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	hand.set_selected(card)
+	hand.set_preview_target(card, controller.enemies[0])
+	assert_true(hand.card_uis[0].highlighted)
+	hand.set_preview_target(Factory.strike(), controller.enemies[0])  # thẻ không có trong tay: bỏ qua
+	hand.set_preview_target(null, null)
+	hand.unbind()
+	hand.set_preview_target(card, controller.enemies[0])  # không có trận: bỏ qua
+	assert_eq(hand.card_uis.size(), 0)
+	hand.free()
+
+
+func test_a_card_that_returns_to_the_hand_later_is_not_still_hovered() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	hand.set_hovered(card)
+	controller.deck.end_turn_discard()  # cả tay vào pile bỏ
+	hand.flush_pending_refresh()
+	controller.deck.draw(10)  # hết pile rút -> xáo lại pile bỏ -> cùng thẻ (cùng uid) quay về tay
+	hand.flush_pending_refresh()
+	var index := controller.deck.get_pile(Deck.HAND).find(card)
+	assert_true(index >= 0, "thẻ đã quay lại tay")
+	assert_almost_eq(_y_of(hand, index), HandUI.SELECTED_RAISE, 0.01, "chuột không còn ở trên thẻ này")
+	hand.free()
