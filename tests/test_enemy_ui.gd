@@ -1,5 +1,7 @@
 extends "res://tests/test_case.gd"
 
+const UiInput := preload("res://tests/ui_input.gd")
+
 var _cards: CardRegistry
 var _enemies: EnemyRegistry
 var _statuses: StatusRegistry
@@ -103,4 +105,50 @@ func test_show_intent_does_not_leak_nodes() -> void:
 		enemy_ui.show_intent(IntentView.build(enemy_ui.unit.intent))
 	assert_almost_eq(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT), orphans_before, 0.0001,
 			"icon ý định cũ phải được giải phóng")
+	enemy_ui.free()
+
+
+func test_left_click_on_a_living_enemy_emits_clicked_with_the_unit() -> void:
+	var unit := _unit(&"slime")
+	var enemy_ui := _enemy_ui(unit)
+	var received: Array[EnemyUnit] = []
+	enemy_ui.clicked.connect(func(clicked_unit: EnemyUnit) -> void: received.append(clicked_unit))
+	enemy_ui._gui_input(UiInput.click())
+	assert_eq(received.size(), 1)
+	assert_eq(received[0], unit)
+	enemy_ui._gui_input(UiInput.click(MOUSE_BUTTON_RIGHT))
+	assert_eq(received.size(), 1)
+	enemy_ui.free()
+
+
+func test_a_dead_enemy_cannot_be_clicked() -> void:
+	var unit := _unit(&"slime")
+	var enemy_ui := _enemy_ui(unit)
+	var received: Array[EnemyUnit] = []
+	enemy_ui.clicked.connect(func(clicked_unit: EnemyUnit) -> void: received.append(clicked_unit))
+	unit.combatant.take_damage(9999)
+	enemy_ui._gui_input(UiInput.click())
+	assert_eq(received.size(), 0)
+	enemy_ui.free()
+
+
+func test_targetable_highlight_turns_on_off_and_never_applies_to_the_dead() -> void:
+	var unit := _unit(&"slime")
+	var enemy_ui := _enemy_ui(unit)
+	assert_eq(enemy_ui.art_rect.color, EnemyUI.ART_COLOR)
+	enemy_ui.set_targetable(true)
+	assert_eq(enemy_ui.art_rect.color, EnemyUI.ART_TARGETABLE_COLOR)
+	enemy_ui.set_targetable(false)
+	assert_eq(enemy_ui.art_rect.color, EnemyUI.ART_COLOR)
+	enemy_ui.set_targetable(true)
+	unit.combatant.take_damage(9999)
+	assert_eq(enemy_ui.art_rect.color, EnemyUI.ART_COLOR, "quái chết thì hết nổi bật")
+	enemy_ui.free()
+
+
+func test_enemy_ui_receives_clicks_but_children_do_not_block() -> void:
+	var enemy_ui := _enemy_ui(_unit(&"slime"))
+	assert_eq(enemy_ui.mouse_filter, Control.MOUSE_FILTER_STOP)
+	assert_eq(enemy_ui.art_rect.mouse_filter, Control.MOUSE_FILTER_IGNORE)
+	assert_eq(enemy_ui.art_label.mouse_filter, Control.MOUSE_FILTER_IGNORE)
 	enemy_ui.free()

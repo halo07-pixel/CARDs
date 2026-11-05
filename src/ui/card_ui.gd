@@ -4,6 +4,9 @@ extends PanelContainer
 ## Hình thẻ là placeholder (chữ cái đầu) cho tới khi có asset; dựng control ngay trong _init nên
 ## dùng được cả khi chưa nằm trong cây scene (test headless).
 
+## Phát khi người chơi bấm chuột trái vào thẻ (UI chỉ báo lên, không tự chơi).
+signal clicked(view: CardView)
+
 const CARD_SIZE := Vector2(220, 300)
 const ART_HEIGHT := 96.0
 const CORNER_RADIUS := 10
@@ -13,6 +16,8 @@ const ART_FONT_SIZE := 72
 const TYPE_FONT_SIZE := 22
 const DESCRIPTION_FONT_SIZE := 28
 const BORDER_WIDTH := 3
+const HIGHLIGHT_BORDER_WIDTH := 6
+const HIGHLIGHT_COLOR := Color(1, 1, 1)
 const UNPLAYABLE_ALPHA := 0.55
 const TEXT_COLOR := Color("f2f2f2")
 const COST_UP_COLOR := Color("ff7070")
@@ -35,6 +40,7 @@ const TYPE_NAMES := {
 }
 
 var view: CardView = null
+var highlighted: bool = false
 var cost_label: Label
 var name_label: Label
 var art_label: Label
@@ -80,6 +86,7 @@ func _init() -> void:
 	description_label.add_theme_font_size_override("normal_font_size", DESCRIPTION_FONT_SIZE)
 	description_label.add_theme_color_override("default_color", TEXT_COLOR)
 	column.add_child(description_label)
+	UiUtil.ignore_mouse_in_children(self)  # để chính CardUI nhận click
 
 
 ## Hiển thị một thẻ. view null -> không đổi gì (kèm log).
@@ -98,6 +105,20 @@ func show_view(new_view: CardView) -> void:
 	modulate.a = 1.0 if view.is_playable else UNPLAYABLE_ALPHA
 
 
+## Viền sáng cho thẻ đang được chọn (chờ chọn mục tiêu).
+func set_highlighted(on: bool) -> void:
+	highlighted = on
+	if view != null:
+		add_theme_stylebox_override("panel", _make_style(view))
+
+
+func _gui_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT and view != null:
+		clicked.emit(view)
+		accept_event()
+
+
 func _cost_color(shift: int) -> Color:
 	if shift > 0:
 		return COST_UP_COLOR
@@ -107,8 +128,8 @@ func _cost_color(shift: int) -> Color:
 func _make_style(card_view: CardView) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = TYPE_COLORS.get(card_view.card_type, Color.DIM_GRAY)
-	style.border_color = RARITY_COLORS.get(card_view.rarity, Color.WHITE)
-	style.set_border_width_all(BORDER_WIDTH)
+	style.border_color = HIGHLIGHT_COLOR if highlighted else RARITY_COLORS.get(card_view.rarity, Color.WHITE)
+	style.set_border_width_all(HIGHLIGHT_BORDER_WIDTH if highlighted else BORDER_WIDTH)
 	style.set_corner_radius_all(CORNER_RADIUS)
 	style.set_content_margin_all(8)
 	return style

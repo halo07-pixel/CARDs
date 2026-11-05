@@ -172,6 +172,11 @@ func can_play(card: CardInstance) -> bool:
 	return _play_blocker(card) == &""
 
 
+## Lý do thẻ không chơi được lúc này (&"" = chơi được). Không đổi gì; UI hỏi trước khi gửi hành động.
+func play_rejection_reason(card: CardInstance) -> StringName:
+	return _play_blocker(card)
+
+
 ## Quái sống có thể chọn làm mục tiêu cho thẻ (rỗng nếu thẻ không nhắm một quái).
 func valid_targets(card: CardInstance) -> Array[EnemyUnit]:
 	var targets: Array[EnemyUnit] = []

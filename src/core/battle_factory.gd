@@ -12,6 +12,22 @@ static func create_player(character: CharacterData, current_hp: int = -1) -> Com
 	return player
 
 
+## Bản rút gọn của create(): chỉ cần nhân vật, bộ bài, quái và GameData (gom sẵn mọi registry).
+## Người chơi được dựng từ nhân vật (current_hp < 0 = đầy máu). Trả null (kèm log) nếu thiếu dữ liệu.
+static func create_from_game_data(character: CharacterData, deck_ids: Array[StringName],
+		enemy_ids: Array[StringName], game_data: GameData, seed_value: int = 1,
+		relic_ids: Array[StringName] = [], potion_ids: Array[StringName] = [],
+		current_hp: int = -1, turn_cap: int = 0) -> BattleController:
+	if game_data == null or character == null:
+		push_error("BattleFactory.create_from_game_data: thiếu character/game_data")
+		return null
+	var player := create_player(character, current_hp)
+	if player == null:
+		return null
+	return create(character, player, deck_ids, enemy_ids, game_data.cards, game_data.enemies, game_data.statuses,
+			seed_value, turn_cap, relic_ids, game_data.relics, potion_ids, game_data.potions)
+
+
 ## Trả null (kèm log) nếu thiếu dữ liệu: id thẻ/quái không tồn tại, registry null, nhân vật lỗi...
 static func create(character: CharacterData, player: Combatant, deck_ids: Array[StringName],
 		enemy_ids: Array[StringName], cards: CardRegistry, enemies: EnemyRegistry,
