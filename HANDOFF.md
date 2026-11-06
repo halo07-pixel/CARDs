@@ -1,15 +1,15 @@
 # HANDOFF - Spire Cards (repo `halo07-pixel/CARDs`)
 
 > Tài liệu bàn giao cho session/đoạn chat mới. Đọc hết file này + `CLAUDE.md` trước khi làm bất cứ gì.
-> Cập nhật lần cuối: sau Giai đoạn 2.3 (nhánh `claude/phase-2-3-potions-xcost-upgrades`).
+> Cập nhật lần cuối: sau mốc 3.4b (đã gộp vào `main`, 738 test đạt). Tiếp theo: mốc 3.5.
 
 ## 1. TL;DR
 
 - **Dự án:** game thẻ bài roguelike kiểu *Slay the Spire*, **Godot 4.7.2 / GDScript**, 1920x1080, renderer Compatibility.
-- **Trạng thái:** phần **lõi logic** (chiến đấu, thẻ, trạng thái, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) đã xong và được test rất kỹ (**738 test đạt**, hàng nghìn trận mô phỏng không vi phạm). **UI mới ở mốc 3.4b: KÉO THẢ THẬT trên màn chiến đấu (thẻ nhắm: mũi tên + xem trước số; thẻ khác: bám con trỏ + vùng thả); 3.4a: logic kéo thả + hover; 3.3b: trận đấu chơi được bằng click** (3.3b: `BattleScene`, `ResultOverlayUI`, scene demo `scenes/battle/battle_demo.tscn` bấm F6 để chơi; 3.3a: `GameData`, `PlayIntent`, `RejectionText`, `HandUI`, `EnergyUI`, `PileCounterUI`, click cho `CardUI`/`EnemyUI`; 3.1: thẻ `CardTextFormatter`/`CardView`/`CardUI`; 3.2: `StatusView`, `IntentView`, `StatusIconUI`, `HealthBarUI`, `CombatantUI`, `EnemyUI`, `IconLibrary`); **chưa có** potion/relic trên màn hình, tooltip, hiệu ứng, potion/relic trên màn hình, menu, bản đồ, cửa hàng, nhân vật thứ hai, sprite quái.
-- **Trên `main`:** Giai đoạn 0, 1, 2.1, 2.2, 2.3, **2.4** (commit `6c07cd7`). Mốc **3.1** đã gộp (`b6b522f`). Mốc **3.2** đã gộp (`8260bf1`). Mốc 3.3a, 3.3b, 3.4a đã gộp (`814144e`). Mốc **3.4b** nằm trên nhánh `claude/phase-3-4b-drag-ui` (chưa gộp, chờ người dùng bảo "merge").
+- **Trạng thái:** Giai đoạn 0, 1, 2.1-2.4 (lõi logic: chiến đấu, thẻ, status, trigger, relic, potion, X-cost, AI quái, bot, mô phỏng) và Giai đoạn 3.1-3.4b (UI chiến đấu: thẻ, quái/status/ý định, tay bài, năng lượng, pile, End Turn, Victory/Defeat, **kéo thả thẻ**, hover, xem trước số) **đã xong và đã gộp vào `main`** (**738 test đạt**, mô phỏng 0 vi phạm). Chơi thử: mở `scenes/battle/battle_demo.tscn` trong Godot rồi bấm F6. **Chưa có:** potion/relic trên màn hình, tooltip, hiệu ứng/animation (3.5-3.6), run/bản đồ/cửa hàng/menu (Giai đoạn 4-5), nhân vật thứ hai, sprite quái (đang là ô chữ cái).
+- **Trên `main`:** mọi thứ đến mốc **3.4b** (commit `8611aec`). Không còn nhánh nào chờ gộp. **Repo đúng là `halo07-pixel/CARDs` (có chữ s)**; repo `CARD` và `cad` không dùng.
 - **Đã duyệt:** kế hoạch Giai đoạn 3 gồm các mốc 3.1 (thẻ), 3.2 (quái + status + ý định), 3.3 (`BattleScene`, tay bài, năng lượng, kết thúc lượt; gom registry thành `GameData`), 3.4 (kéo thả + mũi tên nhắm), 3.5 (potion/relic/tooltip), 3.6 (hiệu ứng). **Nội dung game bằng tiếng Anh.** Asset: tự vẽ icon/khung bằng SVG (tác phẩm gốc, CC0) + UI/font/âm thanh Kenney CC0 từ mirror `ETdoFresh/kenney.nl` (đã đọc license từng pack) + 0x72 DungeonTileset II (CC0, người dùng tải từ itch.io vì sandbox không tải được). Ghi mọi asset vào `assets/CREDITS.md` khi nhập.
-- **Việc đầu tiên của session mới:** dựng môi trường (mục 4), chạy test để xác nhận, rồi hỏi người dùng chọn A/B/C (đừng tự quyết).
+- **Việc đầu tiên của session mới:** dựng môi trường (mục 4), chạy test để xác nhận (kỳ vọng 738), tóm tắt 5 dòng, rồi **trình bày thiết kế mốc 3.5** (mục 13) và chờ người dùng duyệt (đừng tự viết code).
 
 ## 2. Mục tiêu và phạm vi
 
@@ -54,8 +54,7 @@ curl -sL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-s
 unzip -oq g.zip && rm g.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64 && mv Godot_v4.7.2-stable_linux.x86_64 godot && ln -sf $PWD/godot ~/bin/godot
 export PATH=$HOME/bin:$PATH
 git clone https://github.com/halo07-pixel/CARDs.git /home/claude/cardgame && cd /home/claude/cardgame   # repo public: clone không cần token
-git fetch origin claude/phase-2-3-potions-xcost-upgrades && git checkout claude/phase-2-3-potions-xcost-upgrades   # nếu 2.3 chưa gộp
-bash tools/run_tests.sh          # kỳ vọng: 738 passed (nhánh 3.4b) / 694 (main)
+bash tools/run_tests.sh          # kỳ vọng: 738 passed
 ```
 
 Bẫy đã gặp:
@@ -74,10 +73,10 @@ Bẫy đã gặp:
 - **Giao thức git bị chặn** (401) trong sandbox, nhưng REST API `api.github.com` hoạt động. Dùng hai công cụ có sẵn trong repo:
   - Đẩy: `TOKEN=... BRANCH=claude/xxx MESSAGE="feat: ..." python3 tools/gh_push.py` (tạo nhánh mới từ `main`, hoặc thêm commit lên nhánh đã có; `DRY_RUN=1` để xem trước; tự đối chiếu byte với local sau khi đẩy).
   - Gộp: `TOKEN=... BRANCH=claude/xxx python3 tools/gh_merge.py` (fast-forward vào `main`, dừng nếu `main` đã có commit lạ).
-- **Token:** fine-grained PAT, *Only select repositories* = `CARD`, *Repository permissions -> Contents: Read and write*, hạn ngắn. Người dùng dán token vào chat; **tuyệt đối không ghi token vào file/commit/log**. Token từng dán trong đoạn chat cũ **phải được thu hồi**; session mới cần token mới. Nếu thấy `Bad credentials` / `Resource not accessible by personal access token`: token hết hạn/bị thu hồi hoặc thiếu quyền Contents write (sửa ở GitHub -> Settings -> Developer settings -> Fine-grained tokens -> Edit, không cần tạo token mới).
+- **Token:** fine-grained PAT, *Only select repositories* = **`CARDs`** (có chữ s), *Repository permissions -> Contents: Read and write*, hạn ngắn (7 ngày là đủ). Người dùng dán token vào chat; **tuyệt đối không ghi token vào bất kỳ file/commit/log nào** (repo là PUBLIC: GitHub secret scanning sẽ tự thu hồi token bị lộ, và ai cũng đọc được). Token từng dán trong các đoạn chat cũ **phải được thu hồi**; session mới cần token mới. Nếu thấy `Bad credentials` / `Resource not accessible by personal access token`: token hết hạn/bị thu hồi, hoặc chọn nhầm repo (`CARD` thay vì `CARDs`), hoặc thiếu quyền Contents write (GitHub -> Settings -> Developer settings -> Fine-grained tokens -> Edit).
 - Người dùng dùng gói **Free** của Claude -> không dùng được Claude Code trên web; vì vậy mới có cách đẩy bằng API. Không có connector GitHub trong chat.
 - Quy ước: nhánh `claude/phase-X-Y-tên`, commit `<type>: <mô tả>` (`feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`), **không force-push**, chỉ gộp `main` khi người dùng nói. Người dùng cập nhật máy bằng `git checkout main` rồi `git pull origin main`.
-- Lịch sử `main`: `4d7dbd1` nền móng + thẻ/bộ bài/combat core -> `09dfbed`/`1e0c157` README + quyền chạy script -> `110046d` 1.3a quái/AI -> `c0c3fc8` 1.3b BattleController -> `27ffbef` 1.3c bot/mô phỏng/Warrior -> `4d0f64b` 2.1 trigger -> `4218cff` 2.2 relic. Nhánh 2.3: `c51dace` + commit bàn giao này.
+- Lịch sử `main` (fast-forward, mỗi mốc một commit): `4d7dbd1` nền móng + combat core -> `110046d` 1.3a quái/AI -> `c0c3fc8` 1.3b BattleController -> `27ffbef` 1.3c bot/mô phỏng -> `4d0f64b` 2.1 trigger -> `4218cff` 2.2 relic -> `b519357` 2.3 potion/X-cost/nâng cấp -> `6c07cd7` 2.4 -> `b6b522f` 3.1 -> `8260bf1` 3.2 -> `0bee22d` 3.3a -> `b4e64e9` 3.3b -> `814144e` 3.4a -> `8611aec` 3.4b.
 
 ## 6. Kiến trúc
 
@@ -96,9 +95,16 @@ src/core/      Lõi chiến đấu (RefCounted, không node):
 src/sim/       Bot và mô phỏng: BattleBot (trừu tượng), RandomBot, GreedyBot, BattleSimulator,
                BattleInvariants, ScenarioStats
 src/autoload/  EventBus, SaveSystem, RunState, AudioManager, SceneRouter (Giai đoạn 0)
-data/          cards(38) enemies(3) statuses(11) relics(10) potions(8) characters(1)   [.tres]
-tests/         43 file test + test_case.gd + factory/recorder; runner: tests/run_tests.gd
-tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push.py, gh_merge.py
+src/ui/          UI dựng bằng code (Control): view-model thuần (CardView, StatusView, IntentView) + logic thuần không node
+               (CardTextFormatter, PlayIntent, DropIntent, DragGesture, ArrowGeometry/ArrowShape, EnemyHitTest, RejectionText, UiUtil)
+               + control (CardUI, HandUI, EnemyUI, CombatantUI, StatusIconUI, HealthBarUI, EnergyUI, PileCounterUI,
+               TargetArrowUI, PlayZoneUI, ResultOverlayUI, BattleScene = màn chiến đấu, IconLibrary)
+src/data/      (thêm) GameData: gom 5 registry; BattleFactory.create_from_game_data(...) là cách dựng trận ngắn gọn
+scenes/        boot.tscn, battle/battle_demo.tscn (F6 để chơi thử)
+assets/        fonts/kenney_pixel.ttf (CC0), icons/*.svg (tự vẽ, sinh bởi tools/generate_icons.py), CREDITS.md
+data/          cards(38) enemies(5) statuses(11) relics(10) potions(8) characters(1)   [.tres]
+tests/         72 file test + test_case.gd + factory/recorder/ui_input; runner: tests/run_tests.gd
+tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, generate_icons.py (icon SVG), capture_*.gd (chụp ảnh bằng xvfb), gh_push.py, gh_merge.py
 ```
 
 `BattleController` (file `src/core/battle_controller.gd`) là **cửa duy nhất cho UI**:
@@ -160,10 +166,10 @@ tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push
 | **2.4** | Quái có status đầu trận (`starting_statuses`), Spiker (Thorns), Toxic Slug (Poison) | **Xong, đã gộp** (bỏ phần "bot dùng potion": đo thực tế bot đã dùng ~0,7 potion/trận) | **479** |
 | **3.1** | `CardTextFormatter` + `CardView` + `CardUI` (+ `tools/capture_cards.gd` chụp ảnh) | **Xong, đã gộp** | **506** |
 | **3.2** | Icon SVG tự vẽ (`tools/generate_icons.py`, 18 icon), font Kenney Pixel, `StatusView`/`IntentView`, `StatusIconUI`/`HealthBarUI`/`CombatantUI`/`EnemyUI` (+ `tools/capture_combatants.gd`) | **Xong, đã gộp** | **556** |
-| **3.3a** | `GameData` + `BattleFactory.create_from_game_data`, `BattleController.play_rejection_reason`, `PlayIntent` (click chơi thẻ, tự nhắm khi 1 quái), `RejectionText`, `HandUI` (10 thẻ vừa khung, dựng lại trì hoãn), `EnergyUI`, `PileCounterUI` (+ `tools/capture_hand.gd`) | **Xong, trên nhánh `claude/phase-3-3a-hand-ui`, chưa gộp** | **616** |
+| **3.3a** | `GameData` + `BattleFactory.create_from_game_data`, `BattleController.play_rejection_reason`, `PlayIntent` (click chơi thẻ, tự nhắm khi 1 quái), `RejectionText`, `HandUI` (10 thẻ vừa khung, dựng lại trì hoãn), `EnergyUI`, `PileCounterUI` (+ `tools/capture_hand.gd`) | **Xong, đã gộp** | **616** |
 | **3.3b** | `BattleScene` (ghép HandUI/EnemyUI/CombatantUI/EnergyUI/PileCounterUI, End Turn, nhãn lý do từ chối, hủy bằng Esc/chuột phải), `ResultOverlayUI` (Victory/Defeat + Play again), scene demo F6, test tích hợp + test ngẫu nhiên "UI khớp lõi" (10 seed) (+ `tools/capture_battle.gd`) | **Xong, đã gộp** | **648** |
 | **3.4a** | Logic kéo thả: `DragGesture` (click vs kéo, ngưỡng 12 px), `DropIntent` (nhả lên quái/vùng thả = 60% phía trên màn hình, tự nhắm khi 1 quái), `ArrowGeometry`/`ArrowShape` (mũi tên cong), `EnemyHitTest`; `HandUI`: hover nhô lên + vẽ trên cùng, `set_preview_target` (số theo Vulnerable); `PlayIntent.make_decision` thành static (+ `tools/capture_hover.gd`) | **Xong, đã gộp** | **694** |
-| **3.4b** | Kéo thả thật: `CardUI` (click khi NHẢ chuột; `drag_started/moved/ended/cancelled`), `HandUI` (`begin_drag/move_drag/end_drag/cancel_drag/card_anchor`, dựng lại giữa lúc kéo thì báo huỷ), `TargetArrowUI`, `PlayZoneUI`, `BattleScene` điều phối (`DragGesture`+`DropIntent`+`EnemyHitTest`), Esc/chuột phải huỷ, thẻ không đủ điều kiện không kéo được; test tích hợp + test ngẫu nhiên có kéo thả (+ `tools/capture_drag.gd`) | **Xong, trên nhánh `claude/phase-3-4b-drag-ui`, chưa gộp** | **738** |
+| **3.4b** | Kéo thả thật: `CardUI` (click khi NHẢ chuột; `drag_started/moved/ended/cancelled`), `HandUI` (`begin_drag/move_drag/end_drag/cancel_drag/card_anchor`, dựng lại giữa lúc kéo thì báo huỷ), `TargetArrowUI`, `PlayZoneUI`, `BattleScene` điều phối (`DragGesture`+`DropIntent`+`EnemyHitTest`), Esc/chuột phải huỷ, thẻ không đủ điều kiện không kéo được; test tích hợp + test ngẫu nhiên có kéo thả (+ `tools/capture_drag.gd`) | **Xong, đã gộp** | **738** |
 | 3 | UI chiến đấu | **Chưa làm** | - |
 | 4 | Run: map, thưởng, shop, lửa trại, sự kiện | Chưa làm | - |
 | 5 | Menu chính, chọn nhân vật, lưu/tiếp tục, cài đặt | Chưa làm | - |
@@ -174,22 +180,22 @@ tools/         run_tests.sh, simulate_battles.gd, generate_starter_*.gd, gh_push
 ## 11. Nợ kỹ thuật, giới hạn đã biết, chỗ chưa chắc
 
 1. `src/core/battle_controller.gd` dài **407 dòng** (> 400 điển hình của quy chuẩn, < 800 trần mềm). Nếu thêm nữa nên tách (vd. lượt quái ra một lớp riêng).
-2. `BattleFactory.create` có **14 tham số** tuần tự -> nên gom registry thành một đối tượng `GameData`/loadout khi bắt đầu làm UI/run.
+2. `BattleFactory.create` có **14 tham số**: đã có bản rút gọn `BattleFactory.create_from_game_data(character, deck_ids, enemy_ids, game_data, seed, relic_ids, potion_ids, current_hp, turn_cap)` dùng `GameData`; bản cũ giữ cho test.
 3. **Cân bằng chỉ là placeholder:** quái đơn quá dễ (bot thắng ~100%); mang cả 10 relic thì gần như không mất máu. Đo ở 2.4: `GreedyBot` dùng khoảng 0,7-0,8 potion/trận khi mang 3 potion (không phải "gần như không dùng" như ghi trước đây).
 4. Sát thương của trigger và của potion dùng công thức chuẩn (Strength có tác dụng) - khác Slay the Spire (Thorns/potion không nhận Strength).
 5. Các lần phá code **không bị bắt** đã được phân tích và đều tương đương về hành vi (chỉ khác thông báo/cảnh báo log): bỏ `break` khi người chơi tự chết giữa thẻ (resolver đã tự từ chối nguồn đã chết); bỏ nhánh "thiếu registry" của relic trong `BattleFactory` (chốt kế tiếp bắt cùng kết quả).
 6. Chưa có: chiêu quái theo ngưỡng máu, boss nhiều pha, quái triệu hồi, thẻ sinh ra trong bộ bài (Wound/Dazed), hiệu ứng "bỏ thẻ"/"exhaust ngẫu nhiên", i18n. Không lưu giữa trận (thiết kế: chỉ lưu giữa các phòng).
 7. **`RunState` (autoload) chưa nối với trận đấu.** Hợp đồng dự kiến: `RunState` giữ id (`deck`, `relics`, `potions` là `Array[String]`, `hp`, `max_hp`, `gold`, `seed`); chuyển sang `Array[StringName]` khi gọi `BattleFactory`; sau trận: `RunState.hp = player.hp`, `RunState.potions = controller.potions.to_ids()`; thưởng/xóa thẻ làm ở tầng run.
-8. Pipeline chụp ảnh `xvfb` chưa kiểm tra lại sau reset sandbox.
+8. Pipeline chụp ảnh `xvfb` **đã kiểm tra hoạt động** (từ mốc 3.1; mỗi mốc có `tools/capture_*.gd`). Sandbox KHÔNG có chuột/bàn phím thật: kéo thả, hover, phím chỉ kiểm tra bằng sự kiện giả; **cảm giác thao tác thật phải nhờ người dùng thử trên máy** (F6 `battle_demo.tscn`).
 
 ## 12. Asset (kế hoạch)
 
-Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `assets/CREDITS.md`** (tên, tác giả, nguồn, giấy phép). Người dùng đã có kinh nghiệm với bộ pixel-art 0x72 (CC0) và Kenney (CC0) ở dự án khác và thích itch.io. Sandbox không tải được từ itch.io/Kenney/OpenGameArt -> **nhờ người dùng tải zip và gửi lên chat**, hoặc dùng bản mirror trên GitHub (kiểm tra giấy phép thật kỹ). Chưa có font/asset nào trong `assets/`.
+Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `assets/CREDITS.md`**. Hiện có: font Kenney Pixel (CC0, lấy qua mirror GitHub `ETdoFresh/kenney.nl`, đã đọc license từng pack) và 18 icon SVG tự vẽ (chờ người dùng xác nhận CC0). **Nguồn đã khảo sát:** mirror `ETdoFresh/kenney.nl` có 20 pack CC0 dùng được (UI Pack, Pixel UI Pack, âm thanh UI/impact/RPG, font); `game-icons/icons` có icon chiến đấu nhưng chủ yếu CC BY 3.0 (phải ghi tác giả, KHÔNG phải CC0); 0x72 DungeonTileset II là CC0 (xác nhận trên trang tác giả) nhưng chỉ nên lấy từ itch.io: **nhờ người dùng tải zip gửi lên chat** (sandbox bị chặn itch.io/kenney.nl/opengameart). Chưa có sprite quái/nhân vật, nhạc, âm thanh.
 
 ## 13. Bước tiếp theo đề xuất
 
-1. Hỏi người dùng chọn **A / B / C** (mục 1). Khuyến nghị: **gộp 2.3 trước** (`tools/gh_merge.py`), vì nó đã đủ test.
-2. **2.4 đã xong** (`starting_statuses`, Spiker, Toxic Slug).
+1. **Mốc 3.5 (tiếp theo):** potion belt (dùng potion bằng click/kéo, chọn mục tiêu nếu cần) + relic bar trên màn hình, tooltip (hover) cho status/thẻ/relic/potion/từ khóa (Vulnerable, Exhaust...), xem nội dung pile bằng click. Trình bày thiết kế trước, chờ duyệt (quy trình 5 bước). Gợi ý chia 3.5a (logic + view-model + tooltip) và 3.5b (ghép vào BattleScene + test ngẫu nhiên mở rộng).
+2. Mốc 3.6: hiệu ứng (số sát thương nổi, rung thẻ khi bị từ chối, animation lượt quái thay vì tức thì, thanh máu mượt, âm thanh Kenney). Sau đó **Giai đoạn 4 (run: bản đồ, phòng, cửa hàng, nối `RunState` với trận)** và **Giai đoạn 5 (menu/meta)**, theo bảng mục 10.
 3. **Giai đoạn 3 (UI chiến đấu)** đang làm theo kế hoạch đã duyệt (xem mục Trạng thái): **tiếp theo là mốc 3.5** (potion belt + relic bar trên màn hình, tooltip cho status/thẻ/relic/potion, xem pile bằng click). Người dùng cần kiểm tra cảm giác kéo thả trên máy thật (sandbox chỉ có chuột giả). Sau đó 3.5 (potion/relic/tooltip), 3.6 (hiệu ứng, số nổi, animation lượt quái). UI **không bao giờ sửa lõi**, chỉ gọi `play_card/use_potion/end_player_turn` và đọc trạng thái qua Signal; dữ liệu hiển thị đi qua view-model (như `CardView`), không để UI tự tính luật. Mỗi mốc: test headless + chụp ảnh `xvfb` (`tools/capture_*.gd`) gửi người dùng. **Lưu ý harness:** test không có assertion nào bị tính là FAIL (bắt test chết vì lỗi script giữa chừng); lỗi script TRONG hàm xử lý Signal thì KHÔNG làm test fail, nên test vòng đời Signal phải kiểm tra trực tiếp `get_connections()` và test rò rỉ dùng `Performance.OBJECT_ORPHAN_NODE_COUNT` (đo sau khi trạng thái ổn định).
    **Lưu ý controller:** `intent_changed` phát ngay khi quái chọn chiêu mới (và khi số ý định đổi đầu lượt); phase sang PLAYER_TURN xảy ra SAU `turn_started` nên nút End Turn phải nghe `state.changed`; controller chỉ kiểm tra thắng/thua sau một hành động (đừng hạ quái bằng `take_damage` rồi mong UI báo thắng).
    **Bẫy đã gặp ở UI:** (1) `Array[StringName].sort()` so sánh theo địa chỉ bộ nhớ -> thứ tự không ổn định giữa các lần chạy; luôn `sort_custom` theo `String(...)`. (2) Status Artifact chặn debuff gắn SAU nó (đúng luật): khi dựng ví dụ/test, gắn Artifact CUỐI CÙNG hoặc đừng dùng. (3) Font Kenney Pixel nhỏ: dùng cỡ chữ lớn (thẻ 28-44, nhãn 24-32). (4) Sửa file `.gd` bằng script: thụt lề là TAB. (5) `ProgressBar` tự giới hạn giá trị. (6) Control con mặc định chặn chuột (ColorRect, RichTextLabel): dùng `UiUtil.ignore_mouse_in_children`. (7) Click thẻ -> controller đổi tay bài -> giải phóng ngay sẽ giải phóng CardUI đang phát tín hiệu: luôn `request_refresh()` (trì hoãn), không `refresh()` trong handler. (9) Harness chỉ gọi `before_each` (không có `before_all`). (10) `var x: Array[T] = a if c else []` tạo mảng KHÔNG kiểu -> lỗi script nuốt mất cả hàm: dùng if/else. (11) Test `await` được (harness `await` mỗi test). (12) `Array.sort()` hay so sánh float: dùng ngưỡng sai số (ví dụ hướng mũi tên độ dài 0). (13) Thẻ dựng bằng `tests/combat_factory.gd` KHÔNG có mô tả; test hiển thị chữ phải dùng thẻ thật từ `CardRegistry`. (15) Click trên thẻ tính khi NHẢ chuột (bấm xuống chưa biết là click hay kéo); test cũ dùng `UiInput.click()` (chỉ bấm xuống) phải đổi thành `press` + `release`. (16) Controller giữ chuột cho control đã nhận lúc bấm nên `_gui_input` của CardUI vẫn nhận chuyển động/nhả khi con trỏ ra ngoài thẻ; test headless gọi trực tiếp `_gui_input` với `global_position`. (17) Đặt tọa độ UI theo `DropIntent.DESIGN_SCREEN` (1920x1080), không dùng `size` của node. (18) Test cần toạ độ thật phải thêm node vào `Engine.get_main_loop().root` và `await process_frame`. (14) `Deck.add_to_hand` từ chối thẻ đã nằm trong một pile; muốn đưa cùng thẻ về tay phải đi qua xáo bài (`end_turn_discard` rồi `draw`). (8) Test headless gọi trực tiếp `ui._gui_input(tests/ui_input.gd click())` để mô phỏng chuột. Ảnh chụp: `xvfb-run -a godot --rendering-driver opengl3 --path . -s res://tools/capture_*.gd --resolution 1920x1080 -- --out=/tmp/x.png` (project stretch canvas_items 1920x1080 nên phải truyền --resolution đúng).
@@ -197,4 +203,4 @@ Yêu cầu: bản quyền CC0 hoặc ghi rõ; **mọi asset phải ghi vào `ass
 
 ## 14. Prompt khởi động cho session mới (dán nguyên văn)
 
-> Dự án game thẻ bài roguelike Godot 4.7.2: repo `https://github.com/halo07-pixel/CARDs` (public). Hãy clone, đọc `HANDOFF.md` và `CLAUDE.md` ở thư mục gốc (nếu Giai đoạn 2.3 chưa gộp thì nằm ở nhánh `claude/phase-2-3-potions-xcost-upgrades`). Dựng môi trường theo mục 4, chạy `bash tools/run_tests.sh` và báo kết quả. Sau đó tóm tắt tiến độ cho tôi trong 5 dòng và hỏi tôi chọn hướng A/B/C ở mục 13. Tuân thủ quy trình 5 bước: trình bày thiết kế trước, chờ tôi duyệt rồi mới viết code. Khi cần đẩy code lên GitHub tôi sẽ đưa token mới (fine-grained, chỉ repo CARDs, Contents: Read and write); dùng `tools/gh_push.py` và `tools/gh_merge.py`, không ghi token vào file.
+> Dự án game thẻ bài roguelike Godot 4.7.2 (GDScript): repo `https://github.com/halo07-pixel/CARDs` (public, nhánh `main`). Việc đầu tiên: clone, đọc `HANDOFF.md` và `CLAUDE.md` ở thư mục gốc, dựng môi trường theo mục 4, chạy `bash tools/run_tests.sh` (kỳ vọng 738 test đạt) và báo kết quả. Sau đó tóm tắt tiến độ trong 5 dòng. Giai đoạn 0 đến 3.4b đã xong và đã gộp; mốc tiếp theo là 3.5 (potion belt, relic bar, tooltip). Tuân thủ quy trình 5 bước (trình bày thiết kế trước, chờ tôi duyệt rồi mới viết code), nội dung game bằng tiếng Anh, trả lời tiếng Việt, báo cáo trung thực (kể cả lần phá code không bị test bắt), chụp ảnh màn hình mỗi mốc. Khi cần đẩy code lên GitHub tôi sẽ đưa token mới (fine-grained, chỉ repo CARDs, Contents: Read and write); dùng `tools/gh_push.py` và `tools/gh_merge.py`, **không ghi token vào file/commit/log**, chỉ gộp `main` khi tôi nói.
