@@ -2,13 +2,22 @@ extends "res://tests/test_case.gd"
 ## UI điều khiển ngẫu nhiên (click thẻ/quái/End Turn/huỷ/thẻ không có trong tay), sau MỖI bước so sánh
 ## mọi thứ hiển thị trên màn hình với trạng thái của controller. Mọi chỗ lệch = lỗi (kèm seed + bước để tái hiện).
 
+const UiInput := preload("res://tests/ui_input.gd")
+
 const SEEDS: Array[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 const STEPS_PER_SEED := 150
 const EXTRA_STEPS_AFTER_END := 4
-const CARD_CLICK_PERCENT := 65
-const ENEMY_CLICK_PERCENT := 85
-const END_TURN_PERCENT := 92
-const CANCEL_PERCENT := 96
+const CARD_CLICK_PERCENT := 40
+const DRAG_PERCENT := 65
+const ENEMY_CLICK_PERCENT := 77
+const END_TURN_PERCENT := 85
+const CANCEL_PERCENT := 89
+const STALE_CARD_PERCENT := 92
+const DRAG_DROP_PERCENT := 70   # còn lại: nửa Esc, nửa chuột phải
+const DRAG_ESCAPE_PERCENT := 85
+const ZONE_X_RANGE := Vector2(100, 1800)
+const ZONE_Y_RANGE := Vector2(100, 600)
+const BELOW_ZONE_Y_RANGE := Vector2(700, 1000)
 const ENEMY_SETS: Array = [
 	[&"slime", &"goblin", &"acolyte"],
 	[&"spiker", &"toxic_slug"],
@@ -17,7 +26,8 @@ const ENEMY_SETS: Array = [
 
 var _data: GameData
 var _log: String = ""
-var _stats := {"played": 0, "targeting": 0, "turns": 0, "ended": 0, "victories": 0, "rejected": 0}
+var _stats := {"played": 0, "targeting": 0, "turns": 0, "ended": 0, "victories": 0, "rejected": 0,
+		"drags": 0, "dropped": 0, "drag_cancelled": 0}
 
 
 func before_each() -> void:
@@ -26,7 +36,7 @@ func before_each() -> void:
 
 func test_ui_always_matches_the_controller_under_random_play() -> void:
 	for seed_value in SEEDS:
-		_run_seed(seed_value)
+		await _run_seed(seed_value)
 	print("  [fuzz] ", _stats)
 	# Chứng minh test không rỗng: thật sự đã chơi thẻ, chọn mục tiêu, qua lượt, kết thúc trận và bị từ chối.
 	assert_true(_stats["played"] >= 100, "ít thẻ được chơi: %s" % [_stats])
@@ -34,6 +44,9 @@ func test_ui_always_matches_the_controller_under_random_play() -> void:
 	assert_true(_stats["turns"] >= 30, "ít lượt: %s" % [_stats])
 	assert_true(_stats["ended"] >= 6, "ít trận kết thúc: %s" % [_stats])
 	assert_true(_stats["victories"] >= 1 and _stats["victories"] < _stats["ended"], "phải có cả thắng lẫn thua: %s" % [_stats])
+	assert_true(_stats["drags"] >= 40, "ít lần kéo thả: %s" % [_stats])
+	assert_true(_stats["dropped"] >= 20, "ít lần nhả thẻ: %s" % [_stats])
+	assert_true(_stats["drag_cancelled"] >= 8, "ít lần huỷ kéo: %s" % [_stats])
 	assert_true(_stats["rejected"] >= 50, "ít lần bị từ chối: %s" % [_stats])
 
 
@@ -43,7 +56,10 @@ func _run_seed(seed_value: int) -> void:
 	enemy_ids.assign(ENEMY_SETS[seed_value % ENEMY_SETS.size()])
 	var controller := BattleFactory.create_from_game_data(warrior, warrior.starting_deck, enemy_ids, _data, seed_value)
 	var scene := BattleScene.new()
+	Engine.get_main_loop().root.add_child(scene)  # cần nằm trong cây để có toạ độ thật cho kéo thả
 	scene.setup(controller)
+	scene.hand_ui.drag_ended.connect(func(_c: CardInstance, _p: Vector2) -> void: _stats["dropped"] += 1)
+	scene.hand_ui.drag_cancelled.connect(func(_c: CardInstance) -> void: _stats["drag_cancelled"] += 1)
 	controller.card_played.connect(func(_c: CardInstance, _t: EnemyUnit, _r: Array[EffectResult]) -> void: _stats["played"] += 1)
 	controller.turn_started.connect(func(_n: int, is_player: bool) -> void: _stats["turns"] += 1 if is_player else 0)
 	controller.battle_ended.connect(func(victory: bool) -> void:
@@ -54,6 +70,7 @@ func _run_seed(seed_value: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
 	var extra := 0
+	await Engine.get_main_loop().process_frame  # chờ bố cục xong
 	_check(scene, controller, initial_total, "seed %d: sau khi bắt đầu" % seed_value)
 	for step in STEPS_PER_SEED:
 		if controller.state.is_terminal():
@@ -75,6 +92,8 @@ func _random_action(scene: BattleScene, controller: BattleController, rng: Rando
 		var card := hand[rng.randi_range(0, hand.size() - 1)]
 		scene.hand_ui.card_clicked.emit(card)
 		return "bấm thẻ %s" % card.data.id
+	if roll < DRAG_PERCENT and not hand.is_empty():
+		return _random_drag(scene, hand[rng.randi_range(0, hand.size() - 1)], rng)
 	if roll < ENEMY_CLICK_PERCENT:
 		var index := rng.randi_range(0, scene.enemy_uis.size() - 1)
 		scene.enemy_uis[index].clicked.emit(scene.enemy_uis[index].unit)
@@ -85,11 +104,59 @@ func _random_action(scene: BattleScene, controller: BattleController, rng: Rando
 	if roll < CANCEL_PERCENT:
 		scene.cancel_targeting()
 		return "huỷ chọn"
-	var spent := controller.deck.get_pile(Deck.DISCARD)
-	if not spent.is_empty():
-		scene._on_card_clicked(spent[0])
-		return "bấm thẻ đã bỏ %s" % spent[0].data.id
-	return "không làm gì"
+	if roll < STALE_CARD_PERCENT:
+		var spent := controller.deck.get_pile(Deck.DISCARD)
+		if not spent.is_empty():
+			scene._on_card_clicked(spent[0])
+			return "bấm thẻ đã bỏ %s" % spent[0].data.id
+		return "không làm gì"
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	scene._unhandled_input(escape)
+	return "Esc"
+
+
+## Kéo một thẻ bằng chuỗi sự kiện chuột giả: bấm, đi ra xa, (đi qua một điểm), rồi nhả / Esc / chuột phải.
+func _random_drag(scene: BattleScene, card: CardInstance, rng: RandomNumberGenerator) -> String:
+	var card_ui: CardUI = null
+	for candidate in scene.hand_ui.card_uis:
+		if candidate.view.uid == card.uid:
+			card_ui = candidate
+	if card_ui == null:
+		return "kéo thẻ %s (không có UI)" % card.data.id
+	var origin := card_ui.get_global_rect().get_center()
+	card_ui._gui_input(UiInput.press(origin))
+	card_ui._gui_input(UiInput.motion(origin + Vector2(0, -60)))
+	if scene.is_dragging():
+		_stats["drags"] += 1
+	var end := _random_point(scene, rng)
+	card_ui._gui_input(UiInput.motion(_random_point(scene, rng)))
+	card_ui._gui_input(UiInput.motion(end))
+	var how := rng.randi_range(0, 99)
+	if how < DRAG_DROP_PERCENT:
+		card_ui._gui_input(UiInput.release(end))
+		return "kéo thẻ %s rồi nhả ở %s" % [card.data.id, end]
+	if how < DRAG_ESCAPE_PERCENT:
+		var escape := InputEventKey.new()
+		escape.keycode = KEY_ESCAPE
+		escape.pressed = true
+		scene._unhandled_input(escape)
+		card_ui._gui_input(UiInput.release(end))
+		return "kéo thẻ %s rồi Esc" % card.data.id
+	card_ui._gui_input(UiInput.press(end, MOUSE_BUTTON_RIGHT))
+	card_ui._gui_input(UiInput.release(end))
+	return "kéo thẻ %s rồi chuột phải" % card.data.id
+
+
+## Điểm ngẫu nhiên: trên một quái (kể cả đã chết), trong vùng thả, hoặc dưới vùng thả (khu tay bài).
+func _random_point(scene: BattleScene, rng: RandomNumberGenerator) -> Vector2:
+	var pick := rng.randi_range(0, 2)
+	if pick == 0 and not scene.enemy_uis.is_empty():
+		return scene.enemy_uis[rng.randi_range(0, scene.enemy_uis.size() - 1)].get_global_rect().get_center()
+	if pick == 1:
+		return Vector2(rng.randf_range(ZONE_X_RANGE.x, ZONE_X_RANGE.y), rng.randf_range(ZONE_Y_RANGE.x, ZONE_Y_RANGE.y))
+	return Vector2(rng.randf_range(ZONE_X_RANGE.x, ZONE_X_RANGE.y), rng.randf_range(BELOW_ZONE_Y_RANGE.x, BELOW_ZONE_Y_RANGE.y))
 
 
 func _check(scene: BattleScene, controller: BattleController, initial_total: int, label: String) -> void:
@@ -104,6 +171,7 @@ func _check(scene: BattleScene, controller: BattleController, initial_total: int
 	assert_eq(scene.hero_ui.health_bar.block_box.visible, player.block > 0, label + " | giáp người chơi")
 	assert_eq(controller.deck.total_count(), initial_total, label + " | tổng số thẻ phải giữ nguyên")
 	assert_true(controller.deck.count(Deck.HAND) <= Deck.MAX_HAND_SIZE, label + " | tay quá 10 thẻ")
+	_check_no_stuck_drag(scene, label)
 	_check_piles(scene, controller, label)
 	_check_hand(scene, controller, label)
 	_check_enemies(scene, controller, label)
@@ -160,3 +228,11 @@ func _check_targeting(scene: BattleScene, controller: BattleController, label: S
 		assert_eq(highlighted.size(), 0, label + " | không chọn thì không thẻ nào sáng")
 		for enemy_ui in scene.enemy_uis:
 			assert_eq(enemy_ui.art_rect.color, EnemyUI.ART_COLOR, label + " | không chọn thì không quái nào nổi")
+
+
+## Sau MỖI thao tác không được còn dấu vết kéo thả nào (mũi tên, vùng thả, thẻ bám con trỏ, viền sáng do kéo).
+func _check_no_stuck_drag(scene: BattleScene, label: String) -> void:
+	assert_false(scene.is_dragging(), label + " | cảnh còn trạng thái kéo")
+	assert_false(scene.hand_ui.is_dragging(), label + " | tay bài còn trạng thái kéo")
+	assert_false(scene.target_arrow.visible, label + " | mũi tên còn hiện")
+	assert_false(scene.play_zone.visible, label + " | vùng thả còn hiện")

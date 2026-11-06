@@ -4,8 +4,13 @@ extends PanelContainer
 ## Hình thẻ là placeholder (chữ cái đầu) cho tới khi có asset; dựng control ngay trong _init nên
 ## dùng được cả khi chưa nằm trong cây scene (test headless).
 
-## Phát khi người chơi bấm chuột trái vào thẻ (UI chỉ báo lên, không tự chơi).
+## Phát khi người chơi bấm rồi nhả chuột trái tại chỗ (không kéo). UI chỉ báo lên, không tự chơi.
 signal clicked(view: CardView)
+## Kéo thả (toạ độ toàn cục của con trỏ): bắt đầu kéo, đang kéo, nhả, hoặc bị huỷ giữa chừng.
+signal drag_started(view: CardView, pointer: Vector2)
+signal drag_moved(view: CardView, pointer: Vector2)
+signal drag_ended(view: CardView, pointer: Vector2)
+signal drag_cancelled(view: CardView)
 
 const CARD_SIZE := Vector2(220, 300)
 const ART_HEIGHT := 96.0
@@ -41,6 +46,7 @@ const TYPE_NAMES := {
 
 var view: CardView = null
 var highlighted: bool = false
+var _gesture := DragGesture.new()
 var cost_label: Label
 var name_label: Label
 var art_label: Label
@@ -112,11 +118,50 @@ func set_highlighted(on: bool) -> void:
 		add_theme_stylebox_override("panel", _make_style(view))
 
 
+## Huỷ lần kéo đang diễn ra (Esc, chuột phải...). Trả true nếu đang kéo (khi đó phát drag_cancelled).
+func cancel_drag() -> bool:
+	var was_dragging := _gesture.is_dragging()
+	_gesture.cancel()
+	if was_dragging and view != null:
+		drag_cancelled.emit(view)
+	return was_dragging
+
+
+## Godot giữ chuột cho control đã nhận lúc bấm nên chuyển động và lúc nhả vẫn tới đây dù con trỏ đã rời thẻ.
 func _gui_input(event: InputEvent) -> void:
-	var click := event as InputEventMouseButton
-	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT and view != null:
-		clicked.emit(view)
+	if view == null:
+		return
+	var button := event as InputEventMouseButton
+	if button != null:
+		_handle_button(button)
+		return
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		match _gesture.move(motion.global_position):
+			DragGesture.Event.DRAG_STARTED:
+				drag_started.emit(view, motion.global_position)
+			DragGesture.Event.DRAG_MOVED:
+				drag_moved.emit(view, motion.global_position)
+
+
+func _handle_button(button: InputEventMouseButton) -> void:
+	if button.button_index == MOUSE_BUTTON_RIGHT:
+		if button.pressed and (_gesture.phase != DragGesture.Phase.IDLE):
+			cancel_drag()
+			accept_event()
+		return
+	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if button.pressed:
+		_gesture.press(button.global_position)
 		accept_event()
+		return
+	match _gesture.release(button.global_position):
+		DragGesture.Event.CLICK:
+			clicked.emit(view)
+		DragGesture.Event.DROP:
+			drag_ended.emit(view, button.global_position)
+	accept_event()
 
 
 func _cost_color(shift: int) -> Color:

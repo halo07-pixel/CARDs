@@ -122,10 +122,12 @@ func test_left_click_reports_the_right_card_and_other_clicks_do_not() -> void:
 	var hand := _hand_for(controller)
 	var clicked: Array[CardInstance] = []
 	hand.card_clicked.connect(func(card: CardInstance) -> void: clicked.append(card))
-	hand.card_uis[2]._gui_input(UiInput.click())
+	hand.card_uis[2]._gui_input(UiInput.press())
+	hand.card_uis[2]._gui_input(UiInput.release())
 	assert_eq(clicked.size(), 1)
 	assert_eq(clicked[0], controller.deck.get_pile(Deck.HAND)[2])
-	hand.card_uis[2]._gui_input(UiInput.click(MOUSE_BUTTON_RIGHT))
+	hand.card_uis[2]._gui_input(UiInput.press(Vector2.ZERO, MOUSE_BUTTON_RIGHT))
+	hand.card_uis[2]._gui_input(UiInput.release(Vector2.ZERO, MOUSE_BUTTON_RIGHT))
 	assert_eq(clicked.size(), 1, "chuột phải không phải click chơi thẻ")
 	hand.free()
 
@@ -301,4 +303,161 @@ func test_a_card_that_returns_to_the_hand_later_is_not_still_hovered() -> void:
 	var index := controller.deck.get_pile(Deck.HAND).find(card)
 	assert_true(index >= 0, "thẻ đã quay lại tay")
 	assert_almost_eq(_y_of(hand, index), HandUI.SELECTED_RAISE, 0.01, "chuột không còn ở trên thẻ này")
+	hand.free()
+
+
+func _hand_in_tree(controller: BattleController) -> HandUI:
+	var hand := HandUI.new()
+	Engine.get_main_loop().root.add_child(hand)
+	hand.position = Vector2(210, 720)
+	hand.bind(controller)
+	return hand
+
+
+func test_card_drag_signals_are_reported_with_the_card_instance() -> void:
+	var controller := _started()
+	var hand := _hand_for(controller)
+	var log: Array = []
+	hand.drag_started.connect(func(card: CardInstance, at: Vector2) -> void: log.append(["start", card, at]))
+	hand.drag_moved.connect(func(card: CardInstance, at: Vector2) -> void: log.append(["move", card, at]))
+	hand.drag_ended.connect(func(card: CardInstance, at: Vector2) -> void: log.append(["end", card, at]))
+	var card := controller.deck.get_pile(Deck.HAND)[1]
+	var card_ui := hand.card_uis[1]
+	card_ui._gui_input(UiInput.press(Vector2(100, 800)))
+	card_ui._gui_input(UiInput.motion(Vector2(200, 600)))
+	card_ui._gui_input(UiInput.motion(Vector2(300, 300)))
+	card_ui._gui_input(UiInput.release(Vector2(310, 290)))
+	assert_eq(log, [["start", card, Vector2(200, 600)], ["move", card, Vector2(300, 300)], ["end", card, Vector2(310, 290)]])
+	hand.free()
+
+
+func test_a_following_drag_makes_the_card_track_the_pointer() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[2]
+	assert_true(hand.begin_drag(card, true))
+	assert_true(hand.is_dragging())
+	hand.move_drag(Vector2(900, 400))
+	var expected := Vector2(900, 400) - Vector2(210, 720) - HandUI.DRAG_GRAB_OFFSET
+	assert_eq(hand.card_uis[2].position, expected)
+	assert_eq(hand.get_child(hand.get_child_count() - 1), hand.card_uis[2], "thẻ đang kéo vẽ trên cùng")
+	hand.free()
+
+
+func test_end_drag_returns_the_card_to_its_slot_and_stacking() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var slot := hand.card_uis[2].position
+	hand.begin_drag(controller.deck.get_pile(Deck.HAND)[2], true)
+	hand.move_drag(Vector2(900, 400))
+	hand.end_drag()
+	assert_false(hand.is_dragging())
+	assert_eq(hand.card_uis[2].position, slot, "về đúng chỗ trong tay")
+	for i in hand.card_uis.size():
+		assert_eq(hand.get_child(i), hand.card_uis[i], "thứ tự vẽ trở lại như cũ")
+	hand.free()
+
+
+func test_the_other_cards_do_not_move_while_one_is_dragged() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var before: Array[Vector2] = []
+	for card_ui in hand.card_uis:
+		before.append(card_ui.position)
+	hand.begin_drag(controller.deck.get_pile(Deck.HAND)[2], true)
+	hand.move_drag(Vector2(1000, 300))
+	for i in hand.card_uis.size():
+		if i != 2:
+			assert_eq(hand.card_uis[i].position, before[i], "thẻ %d đứng yên" % i)
+	hand.free()
+
+
+func test_target_drag_keeps_the_card_raised_and_lit_without_following() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[2]
+	assert_true(hand.begin_drag(card, false))
+	assert_true(hand.card_uis[2].highlighted)
+	assert_almost_eq(hand.card_uis[2].position.y, 0.0, 0.01, "nhô lên như thẻ đang chọn")
+	var raised := hand.card_uis[2].position
+	hand.move_drag(Vector2(900, 400))
+	assert_eq(hand.card_uis[2].position, raised, "thẻ nhắm không bám theo con trỏ")
+	hand.end_drag()
+	assert_false(hand.card_uis[2].highlighted)
+	assert_almost_eq(hand.card_uis[2].position.y, HandUI.SELECTED_RAISE, 0.01)
+	hand.free()
+
+
+func test_begin_drag_rejects_cards_that_are_not_in_the_hand() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	assert_false(hand.begin_drag(Factory.strike(), true))
+	assert_false(hand.begin_drag(null, true))
+	assert_false(hand.is_dragging())
+	hand.free()
+
+
+func test_cancel_drag_cancels_the_running_drag_and_reports_it() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var cancelled: Array[CardInstance] = []
+	hand.drag_cancelled.connect(func(card: CardInstance) -> void: cancelled.append(card))
+	assert_false(hand.cancel_drag(), "không có gì đang kéo")
+	var card := controller.deck.get_pile(Deck.HAND)[3]
+	hand.card_uis[3]._gui_input(UiInput.press(Vector2(100, 800)))
+	hand.card_uis[3]._gui_input(UiInput.motion(Vector2(300, 400)))
+	hand.begin_drag(card, true)
+	assert_true(hand.cancel_drag())
+	assert_eq(cancelled, [card] as Array[CardInstance])
+	assert_false(hand.is_dragging(), "trạng thái kéo của HandUI cũng được dọn")
+	hand.card_uis[3]._gui_input(UiInput.release(Vector2(300, 400)))
+	assert_eq(cancelled.size(), 1, "nhả chuột sau khi huỷ không phát thêm gì")
+	hand.free()
+
+
+func test_rebuilding_during_a_drag_reports_a_cancel() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var cancelled: Array[CardInstance] = []
+	hand.drag_cancelled.connect(func(card: CardInstance) -> void: cancelled.append(card))
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	hand.begin_drag(card, true)
+	hand.refresh()  # CardUI bị thay mới nên mất chuột đang giữ
+	assert_eq(cancelled, [card] as Array[CardInstance])
+	assert_false(hand.is_dragging())
+	hand.free()
+
+
+func test_card_anchor_is_the_top_center_of_the_card() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[1]
+	var rect := hand.card_uis[1].get_global_rect()
+	assert_eq(hand.card_anchor(card), Vector2(rect.get_center().x, rect.position.y))
+	assert_eq(hand.card_anchor(Factory.strike()), Vector2.ZERO)
+	assert_eq(hand.card_anchor(null), Vector2.ZERO)
+	hand.free()
+
+
+func test_hover_is_cleared_when_a_drag_begins() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[1]
+	hand.card_uis[1].mouse_entered.emit()
+	hand.begin_drag(card, false)
+	hand.end_drag()
+	assert_almost_eq(hand.card_uis[1].position.y, HandUI.SELECTED_RAISE, 0.01, "không còn nhô vì hover")
+	hand.free()
+
+
+func test_a_relayout_in_the_middle_of_a_following_drag_does_not_snap_the_card_back() -> void:
+	var controller := _started()
+	var hand := _hand_in_tree(controller)
+	var cards := controller.deck.get_pile(Deck.HAND)
+	hand.begin_drag(cards[2], true)
+	hand.move_drag(Vector2(900, 400))
+	var following := hand.card_uis[2].position
+	hand.set_hovered(cards[0])  # bất kỳ cập nhật nào gọi lại bố cục
+	hand.set_selected(cards[4])
+	assert_eq(hand.card_uis[2].position, following, "thẻ đang bám con trỏ giữ nguyên vị trí")
 	hand.free()

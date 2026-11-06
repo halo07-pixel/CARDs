@@ -6,6 +6,7 @@ extends RefCounted
 ## hoặc REJECTED (kèm lý do). Việc thực thi (controller.play_card) do nơi gọi làm.
 
 const PLAY_ZONE_HEIGHT_RATIO := 0.6  ## vùng thả = phần trên của màn hình, kết thúc trước tay bài
+const DESIGN_SCREEN := Vector2(1920, 1080)  ## độ phân giải thiết kế (khớp project.godot); mọi toạ độ UI dùng hệ này
 
 
 static func play_zone(screen_size: Vector2) -> Rect2:
