@@ -150,15 +150,10 @@ func end_player_turn() -> bool:
 
 ## Dùng potion ở ô `slot` (không tốn năng lượng). target chỉ cần với potion nhắm một quái.
 func use_potion(slot: int, target: EnemyUnit = null) -> bool:
-	if state.is_terminal():
-		return _reject(REASON_BATTLE_OVER)
-	if not state.is_player_turn():
-		return _reject(REASON_NOT_PLAYER_TURN)
+	var reason := potion_rejection_reason(slot, target)
+	if reason != &"":
+		return _reject(reason)
 	var potion := potions.get_at(slot)
-	if potion == null:
-		return _reject(REASON_NO_POTION)
-	if not _target_is_valid(potion.target_mode, target):
-		return _reject(REASON_INVALID_TARGET)
 	potions.remove_at(slot)
 	var results := _resolve_effects(potion.effects, target, 1, false)
 	potion_used.emit(slot, potion, target, results)
@@ -166,6 +161,30 @@ func use_potion(slot: int, target: EnemyUnit = null) -> bool:
 	_refresh_intents()
 	_check_end()
 	return true
+
+
+## Lý do không dùng được potion ở ô `slot` với `target` (&"" nếu dùng được). Không đổi gì;
+## UI hỏi trước khi gửi hành động. Potion nhắm một quái cần target là quái sống của trận này.
+func potion_rejection_reason(slot: int, target: EnemyUnit = null) -> StringName:
+	if state.is_terminal():
+		return REASON_BATTLE_OVER
+	if not state.is_player_turn():
+		return REASON_NOT_PLAYER_TURN
+	var potion := potions.get_at(slot)
+	if potion == null:
+		return REASON_NO_POTION
+	if not _target_is_valid(potion.target_mode, target):
+		return REASON_INVALID_TARGET
+	return &""
+
+
+## Quái sống có thể chọn làm mục tiêu cho potion ở ô `slot` (rỗng nếu ô trống hoặc potion không nhắm một quái).
+func valid_potion_targets(slot: int) -> Array[EnemyUnit]:
+	var targets: Array[EnemyUnit] = []
+	var potion := potions.get_at(slot)
+	if potion != null and potion.target_mode == CardData.TargetMode.SINGLE_ENEMY:
+		targets.assign(living_enemies())
+	return targets
 
 
 func can_play(card: CardInstance) -> bool:
