@@ -1,7 +1,7 @@
 class_name BattleScene
 extends Control
 ## Màn chiến đấu: ghép HandUI, EnemyUI, CombatantUI, EnergyUI, PileCounterUI, nút End Turn, lớp phủ kết quả.
-## Sở hữu PlayIntent (thao tác chơi thẻ bằng click). UI KHÔNG đổi lõi: chỉ gọi controller.play_card /
+## Cũng có dây potion, thanh relic, tooltip và lớp phủ xem pile. Sở hữu PlayIntent (chơi thẻ) và PotionIntent (dùng potion). UI KHÔNG đổi lõi: chỉ gọi controller.play_card /
 ## end_player_turn và vẽ lại theo Signal (call down, signal up). Lượt quái chạy tức thì (animation: mốc 3.6).
 ## Dùng: scene.setup(controller) -> controller.start_battle(); đổi trận: setup(controller_mới); dọn: teardown().
 
@@ -13,6 +13,8 @@ const ENEMY_GAP := 90
 const SCREEN_WIDTH := 1920.0
 const HERO_POSITION := Vector2(60, 500)
 const HERO_WIDTH := 420.0
+const POTION_BELT_POSITION := Vector2(60, 410)
+const RELIC_BAR_POSITION := Vector2(40, 90)
 const HAND_POSITION := Vector2(210, 720)
 const ENERGY_POSITION := Vector2(40, 900)
 const DRAW_POSITION := Vector2(40, 780)
@@ -30,10 +32,15 @@ const MESSAGE_COLOR := Color("ffd27a")
 
 var controller: BattleController = null
 var intent := PlayIntent.new()
+var potion_intent := PotionIntent.new()
 var enemy_row: HBoxContainer
 var enemy_uis: Array[EnemyUI] = []
 var hero_ui: CombatantUI
 var hand_ui: HandUI
+var potion_belt_ui: PotionBeltUI
+var relic_bar_ui: RelicBarUI
+var tooltip_ui: TooltipUI
+var pile_viewer: PileViewerUI
 var energy_ui: EnergyUI
 var draw_counter: PileCounterUI
 var discard_counter: PileCounterUI
@@ -69,7 +76,22 @@ func _init() -> void:
 	hero_ui = CombatantUI.new()
 	hero_ui.position = HERO_POSITION
 	hero_ui.custom_minimum_size = Vector2(HERO_WIDTH, 0)
+	hero_ui.tooltip_requested.connect(_on_tooltip_requested)
+	hero_ui.tooltip_cleared.connect(_on_tooltip_cleared)
 	add_child(hero_ui)
+
+	relic_bar_ui = RelicBarUI.new()
+	relic_bar_ui.position = RELIC_BAR_POSITION
+	relic_bar_ui.tooltip_requested.connect(_on_tooltip_requested)
+	relic_bar_ui.tooltip_cleared.connect(_on_tooltip_cleared)
+	add_child(relic_bar_ui)
+
+	potion_belt_ui = PotionBeltUI.new()
+	potion_belt_ui.position = POTION_BELT_POSITION
+	potion_belt_ui.slot_clicked.connect(_on_potion_slot_clicked)
+	potion_belt_ui.tooltip_requested.connect(_on_tooltip_requested)
+	potion_belt_ui.tooltip_cleared.connect(_on_tooltip_cleared)
+	add_child(potion_belt_ui)
 
 	hand_ui = HandUI.new()
 	hand_ui.position = HAND_POSITION
@@ -78,12 +100,16 @@ func _init() -> void:
 	hand_ui.drag_moved.connect(_on_drag_moved)
 	hand_ui.drag_ended.connect(_on_drag_ended)
 	hand_ui.drag_cancelled.connect(_on_drag_cancelled)
+	hand_ui.card_hovered.connect(_on_card_hovered)
+	hand_ui.card_hover_ended.connect(_on_tooltip_cleared)
 	add_child(hand_ui)
 
 	energy_ui = _place(EnergyUI.new(), ENERGY_POSITION)
 	draw_counter = _place(PileCounterUI.new(Deck.DRAW), DRAW_POSITION)
 	discard_counter = _place(PileCounterUI.new(Deck.DISCARD), DISCARD_POSITION)
 	exhaust_counter = _place(PileCounterUI.new(Deck.EXHAUST), EXHAUST_POSITION)
+	for counter in [draw_counter, discard_counter, exhaust_counter]:
+		counter.clicked.connect(_on_pile_clicked)
 
 	end_turn_button = Button.new()
 	end_turn_button.text = "End Turn"
@@ -111,6 +137,12 @@ func _init() -> void:
 	target_arrow = TargetArrowUI.new()
 	add_child(target_arrow)
 
+	tooltip_ui = TooltipUI.new()
+	add_child(tooltip_ui)
+
+	pile_viewer = PileViewerUI.new()
+	add_child(pile_viewer)
+
 	result_overlay = ResultOverlayUI.new()
 	result_overlay.play_again_pressed.connect(func() -> void: restart_requested.emit())
 	add_child(result_overlay)
@@ -131,9 +163,13 @@ func setup(p_controller: BattleController) -> void:
 		var enemy_ui := EnemyUI.new()
 		enemy_ui.bind(unit)
 		enemy_ui.clicked.connect(_on_enemy_clicked)
+		enemy_ui.tooltip_requested.connect(_on_tooltip_requested)
+		enemy_ui.tooltip_cleared.connect(_on_tooltip_cleared)
 		enemy_row.add_child(enemy_ui)
 		enemy_uis.append(enemy_ui)
 	hero_ui.bind(controller.player)
+	relic_bar_ui.bind(controller)
+	potion_belt_ui.bind(controller)
 	hand_ui.bind(controller)
 	energy_ui.bind(controller)
 	draw_counter.bind(controller.deck)
@@ -142,6 +178,7 @@ func setup(p_controller: BattleController) -> void:
 	controller.turn_started.connect(_on_state_event)
 	controller.intent_changed.connect(_on_intent_changed)
 	controller.card_played.connect(_on_card_played)
+	controller.potion_used.connect(_on_potion_used)
 	controller.enemy_acted.connect(_on_enemy_acted)
 	controller.enemy_defeated.connect(_on_enemy_defeated)
 	controller.battle_ended.connect(_on_battle_ended)
@@ -156,6 +193,7 @@ func teardown() -> void:
 		controller.turn_started.disconnect(_on_state_event)
 		controller.intent_changed.disconnect(_on_intent_changed)
 		controller.card_played.disconnect(_on_card_played)
+		controller.potion_used.disconnect(_on_potion_used)
 		controller.enemy_acted.disconnect(_on_enemy_acted)
 		controller.enemy_defeated.disconnect(_on_enemy_defeated)
 		controller.battle_ended.disconnect(_on_battle_ended)
@@ -163,6 +201,8 @@ func teardown() -> void:
 		controller.state.changed.disconnect(_on_phase_changed)
 		controller = null
 	hero_ui.unbind()
+	relic_bar_ui.unbind()
+	potion_belt_ui.unbind()
 	hand_ui.unbind()  # nếu đang kéo thẻ: HandUI báo drag_cancelled và _finish_drag dọn
 	_finish_drag()
 	energy_ui.unbind()
@@ -173,7 +213,10 @@ func teardown() -> void:
 		enemy_ui.free()
 	enemy_uis.clear()
 	intent.cancel()
+	potion_intent.cancel()
 	hand_ui.set_selected(null)
+	pile_viewer.close()
+	tooltip_ui.hide_tooltip()
 	result_overlay.hide_result()
 	message_label.text = ""
 	turn_label.text = ""
@@ -185,7 +228,9 @@ func show_message(text: String) -> void:
 
 ## Bỏ chọn thẻ đang chờ mục tiêu (chuột phải hoặc Esc). Trả true nếu có gì để bỏ.
 func cancel_targeting() -> bool:
-	var cancelled := intent.cancel()
+	var cancelled_card := intent.cancel()
+	var cancelled_potion := potion_intent.cancel()
+	var cancelled := cancelled_card or cancelled_potion
 	if cancelled:
 		show_message("")
 		_sync_targeting()
@@ -197,6 +242,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	var wants_cancel := (click != null and click.pressed and click.button_index == MOUSE_BUTTON_RIGHT) \
 			or (key != null and key.pressed and key.keycode == KEY_ESCAPE)
+	if wants_cancel and pile_viewer.close():  # lớp phủ đang mở: Esc/chuột phải đóng nó trước
+		get_viewport().set_input_as_handled()
+		return
 	if wants_cancel and (hand_ui.cancel_drag() or cancel_targeting()):
 		get_viewport().set_input_as_handled()
 
@@ -214,12 +262,40 @@ func _place(control: Control, at: Vector2) -> Control:
 ## Bấm thẻ: PlayIntent hỏi controller trước rồi mới quyết định; việc thực thi do ta làm.
 func _on_card_clicked(card: CardInstance) -> void:
 	if controller != null:
+		potion_intent.cancel()  # chỉ một lựa chọn chờ mục tiêu tại một thời điểm
 		_apply(intent.select_card(card, controller))
 
 
+## Bấm quái: nếu đang chờ mục tiêu cho potion thì là mục tiêu của potion, không thì của thẻ.
 func _on_enemy_clicked(unit: EnemyUnit) -> void:
-	if controller != null:
+	if controller == null:
+		return
+	if potion_intent.is_targeting():
+		_apply_potion(potion_intent.choose_target(unit, controller))
+	else:
 		_apply(intent.choose_target(unit, controller))
+
+
+## Bấm ô potion: PotionIntent hỏi controller trước rồi mới quyết định; việc thực thi do ta làm.
+func _on_potion_slot_clicked(slot: int) -> void:
+	if controller == null or pile_viewer.is_open():
+		return
+	intent.cancel()
+	_apply_potion(potion_intent.select_slot(slot, controller))
+
+
+func _apply_potion(decision: PotionIntent.Decision) -> void:
+	match decision.outcome:
+		PotionIntent.Outcome.USE_NOW:
+			show_message("")
+			controller.use_potion(decision.slot, decision.target)  # nếu bị từ chối, action_rejected hiện lý do
+		PotionIntent.Outcome.NEED_TARGET:
+			show_message(RejectionText.CHOOSE_TARGET)
+		PotionIntent.Outcome.REJECTED:
+			show_message(RejectionText.for_reason(decision.reason))
+		PotionIntent.Outcome.CANCELLED:
+			show_message("")
+	_sync_targeting()
 
 
 func _apply(decision: PlayIntent.Decision) -> void:
@@ -247,6 +323,9 @@ func _on_drag_started(card: CardInstance, pointer: Vector2) -> void:
 		hand_ui.cancel_drag()  # không bắt đầu kéo thẻ không chơi được
 		return
 	intent.cancel()  # bỏ lựa chọn bằng click (nếu có)
+	potion_intent.cancel()
+	potion_belt_ui.set_selected_slot(PotionIntent.NO_SLOT)  # ô potion hết viền sáng ngay
+	tooltip_ui.hide_tooltip()
 	show_message("")
 	_dragged = card
 	var single_target := card.data.target_mode == CardData.TargetMode.SINGLE_ENEMY
@@ -311,6 +390,7 @@ func _on_end_turn_pressed() -> void:
 	if controller == null:
 		return
 	intent.cancel()  # tường minh; sync cũng sẽ bỏ chọn khi sang lượt quái
+	potion_intent.cancel()
 	show_message("")
 	controller.end_player_turn()
 	_refresh_all()
@@ -325,6 +405,7 @@ func _refresh_all() -> void:
 	if controller.state.is_terminal():
 		result_overlay.show_result(controller.state.phase == BattleState.Phase.VICTORY)
 	_refresh_intents()  # dự phòng: controller đã phát intent_changed khi quái đổi chiêu hoặc đổi số
+	potion_belt_ui.refresh()  # "dùng được hay không" đổi theo lượt
 	_sync_targeting()
 
 
@@ -335,10 +416,14 @@ func _refresh_intents() -> void:
 
 func _sync_targeting() -> void:
 	intent.sync(controller)
+	potion_intent.sync(controller)
 	hand_ui.set_selected(intent.selected)
+	potion_belt_ui.set_selected_slot(potion_intent.selected_slot)
 	var valid: Array[EnemyUnit] = []
 	if intent.is_targeting():
 		valid = controller.valid_targets(intent.selected)
+	elif potion_intent.is_targeting():
+		valid = controller.valid_potion_targets(potion_intent.selected_slot)
 	for enemy_ui in enemy_uis:
 		enemy_ui.set_targetable(valid.has(enemy_ui.unit))
 
@@ -359,6 +444,10 @@ func _on_card_played(_card: CardInstance, _target: EnemyUnit, _results: Array[Ef
 	_refresh_all()
 
 
+func _on_potion_used(_slot: int, _potion: PotionData, _target: EnemyUnit, _results: Array[EffectResult]) -> void:
+	_refresh_all()
+
+
 func _on_enemy_acted(_unit: EnemyUnit, _move: EnemyMove, _results: Array[EffectResult]) -> void:
 	_refresh_all()
 
@@ -373,3 +462,35 @@ func _on_battle_ended(_victory: bool) -> void:
 
 func _on_action_rejected(reason: StringName) -> void:
 	show_message(RejectionText.for_reason(reason))
+
+
+## --- Tooltip và xem pile ---
+
+## Tooltip chỉ hiện khi không kéo thẻ và không có lớp phủ pile; nguồn nào cũng báo lên đây (signal up).
+func _on_tooltip_requested(tooltip: TooltipView, anchor: Rect2) -> void:
+	if is_dragging() or pile_viewer.is_open():
+		return
+	tooltip_ui.show_tooltip(tooltip, anchor)
+
+
+func _on_tooltip_cleared() -> void:
+	tooltip_ui.hide_tooltip()
+
+
+func _on_card_hovered(card: CardInstance, anchor: Rect2) -> void:
+	if controller != null:
+		_on_tooltip_requested(TooltipBuilder.for_card_with(card.data, controller.get_status_data), anchor)
+
+
+## Bấm bộ đếm pile: mở lớp phủ xem pile (xem PileView: sắp theo tên, không lộ thứ tự rút).
+func _on_pile_clicked(pile_name: StringName) -> void:
+	if controller == null or is_dragging() or result_overlay.visible:
+		return
+	intent.cancel()
+	potion_intent.cancel()
+	show_message("")
+	_sync_targeting()
+	tooltip_ui.hide_tooltip()
+	var views := PileView.build(controller.deck, pile_name, controller.player)
+	var title: String = PileCounterUI.TITLES.get(pile_name, String(pile_name).capitalize())
+	pile_viewer.show_pile("%s pile (%d)" % [title, views.size()], views)

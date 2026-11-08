@@ -5,6 +5,9 @@ extends VBoxContainer
 
 ## Phát khi bấm chuột trái vào quái còn sống (BattleScene dùng để chọn mục tiêu).
 signal clicked(unit: EnemyUnit)
+## Tooltip của ý định (trỏ vào hàng ý định) và của status (chuyển tiếp từ CombatantUI) báo lên trên.
+signal tooltip_requested(tooltip: TooltipView, anchor: Rect2)
+signal tooltip_cleared
 
 const ART_SIZE := Vector2(190, 190)
 const ART_COLOR := Color(0.18, 0.2, 0.3)
@@ -20,6 +23,7 @@ var intent_label: Label
 var art_label: Label
 var art_rect: ColorRect
 var _targetable: bool = false
+var _intent_hovered: bool = false
 var combatant_ui: CombatantUI
 
 
@@ -45,6 +49,8 @@ func _init() -> void:
 	add_child(art_rect)
 
 	combatant_ui = CombatantUI.new()
+	combatant_ui.tooltip_requested.connect(_on_combatant_tooltip_requested)
+	combatant_ui.tooltip_cleared.connect(_on_combatant_tooltip_cleared)
 	add_child(combatant_ui)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	UiUtil.ignore_mouse_in_children(self)  # để chính EnemyUI nhận click
@@ -82,6 +88,8 @@ func show_intent(view: IntentView) -> void:
 		intent_row.add_child(icon)
 	intent_label.text = view.text
 	intent_row.add_child(intent_label)
+	if _intent_hovered:
+		_emit_intent_tooltip()  # ý định đổi khi đang trỏ: tooltip theo ý định mới
 
 
 ## Viền/màu nổi bật khi quái là mục tiêu hợp lệ của thẻ đang chọn.
@@ -91,6 +99,10 @@ func set_targetable(on: bool) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		_set_intent_hover(unit != null and unit.is_alive() and _intent_rect().has_point(motion.position))
+		return
 	var click := event as InputEventMouseButton
 	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
 			and unit != null and unit.is_alive():
@@ -110,5 +122,50 @@ func _apply_alive_state() -> void:
 	_refresh_art_color()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_MOUSE_EXIT:
+		_set_intent_hover(false)
+
+
+## Vùng chứa các icon/chữ của ý định (toạ độ cục bộ của EnemyUI); không có gì thì lấy cả hàng.
+func _intent_rect() -> Rect2:
+	var merged := Rect2()
+	var first := true
+	for child in intent_row.get_children():
+		var control := child as Control
+		if control == null or not control.visible:
+			continue
+		merged = control.get_rect() if first else merged.merge(control.get_rect())
+		first = false
+	if first:
+		return intent_row.get_rect()
+	return Rect2(merged.position + intent_row.position, merged.size)
+
+
+func _set_intent_hover(on: bool) -> void:
+	if on == _intent_hovered:
+		return
+	_intent_hovered = on
+	if on:
+		_emit_intent_tooltip()
+	else:
+		tooltip_cleared.emit()
+
+
+func _emit_intent_tooltip() -> void:
+	var local := _intent_rect()
+	tooltip_requested.emit(TooltipBuilder.for_intent(unit.intent),
+			Rect2(get_global_rect().position + local.position, local.size))
+
+
+func _on_combatant_tooltip_requested(tooltip: TooltipView, anchor: Rect2) -> void:
+	tooltip_requested.emit(tooltip, anchor)
+
+
+func _on_combatant_tooltip_cleared() -> void:
+	tooltip_cleared.emit()
+
+
 func _on_died() -> void:
+	_set_intent_hover(false)
 	_apply_alive_state()

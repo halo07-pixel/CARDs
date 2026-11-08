@@ -2,6 +2,9 @@ class_name PileCounterUI
 extends PanelContainer
 ## Bộ đếm số thẻ của MỘT pile (rút / bỏ / exhaust). Tự cập nhật theo pile_changed của Deck.
 
+## Bấm bộ đếm (chuột trái): BattleScene mở lớp phủ xem pile. UI chỉ báo lên.
+signal clicked(pile_name: StringName)
+
 const TITLES := {Deck.DRAW: "Draw", Deck.DISCARD: "Discard", Deck.EXHAUST: "Exhaust"}
 const COUNTER_SIZE := Vector2(130, 90)
 const TITLE_FONT_SIZE := 22
@@ -55,6 +58,13 @@ func unbind() -> void:
 func refresh() -> void:
 	if deck != null:
 		count_label.text = str(deck.count(pile_name))
+
+
+func _gui_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		clicked.emit(pile_name)
+		accept_event()
 
 
 func _on_pile_changed(pile: StringName) -> void:

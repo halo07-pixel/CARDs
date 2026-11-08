@@ -3,6 +3,9 @@ extends Control
 ## Giai đoạn 5 sẽ thay bằng luồng menu/bản đồ. "Play again" dựng một trận mới với seed mới.
 
 const ENEMY_IDS: Array[StringName] = [&"slime", &"spiker", &"toxic_slug"]
+## Relic và potion để thử thanh relic, dây potion và tooltip (Giai đoạn 4 sẽ lấy từ lượt chạy thật).
+const RELIC_IDS: Array[StringName] = [&"burning_blood", &"anchor", &"vajra", &"bronze_scales"]
+const POTION_IDS: Array[StringName] = [&"fire_potion", &"weak_potion", &"block_potion"]
 const CHARACTER_PATH := "res://data/characters/warrior.tres"
 
 var battle_scene: BattleScene = null
@@ -21,7 +24,7 @@ func _start_battle() -> void:
 		battle_scene = null
 	var character := load(CHARACTER_PATH) as CharacterData
 	var controller := BattleFactory.create_from_game_data(character, character.starting_deck, ENEMY_IDS,
-			_game_data, randi())
+			_game_data, randi(), RELIC_IDS, POTION_IDS)
 	if controller == null:
 		push_error("BattleDemo: không dựng được trận")
 		return

@@ -35,7 +35,13 @@ static func entry(keyword: StringName) -> GlossaryEntry:
 static func status_entry(status_id: StringName, statuses: StatusRegistry) -> GlossaryEntry:
 	if statuses == null or not statuses.has_status(status_id):
 		return null
-	var data := statuses.get_status(status_id)
+	return status_entry_from(statuses.get_status(status_id))
+
+
+## Như status_entry nhưng từ một StatusData có sẵn; null nếu data null.
+static func status_entry_from(data: StatusData) -> GlossaryEntry:
+	if data == null:
+		return null
 	return GlossaryEntry.create(data.display_name, data.description)
 
 
@@ -71,11 +77,18 @@ static func status_ids_for_card(card: CardData) -> Array[StringName]:
 
 ## Chú giải đầy đủ cho một thẻ: từ khóa cố định trước, rồi status. Status lạ (không có trong registry) bị bỏ.
 static func entries_for_card(card: CardData, statuses: StatusRegistry) -> Array[GlossaryEntry]:
+	return entries_for_card_with(card, func(status_id: StringName) -> StatusData:
+		return statuses.get_status(status_id) if statuses != null and statuses.has_status(status_id) else null)
+
+
+## Như entries_for_card nhưng tra status bằng `lookup(status_id) -> StatusData` (null nếu không có),
+## để nơi chỉ có controller (get_status_data) cũng dùng được mà không cần giữ registry.
+static func entries_for_card_with(card: CardData, lookup: Callable) -> Array[GlossaryEntry]:
 	var entries: Array[GlossaryEntry] = []
 	for keyword in keywords_for_card(card):
 		entries.append(entry(keyword))
 	for status_id in status_ids_for_card(card):
-		var status := status_entry(status_id, statuses)
+		var status := status_entry_from(lookup.call(status_id) as StatusData)
 		if status != null:
 			entries.append(status)
 	return entries

@@ -31,9 +31,10 @@ func _scene_for(controller: BattleController) -> BattleScene:
 func _connection_count(controller: BattleController) -> int:
 	var total := controller.deck.pile_changed.get_connections().size()
 	for signal_name in ["energy_changed", "turn_started", "intent_changed", "card_played", "enemy_acted",
-			"enemy_defeated", "action_rejected", "battle_ended"]:
+			"enemy_defeated", "action_rejected", "battle_ended", "potion_used"]:
 		total += controller.get_signal_connection_list(signal_name).size()
 	total += controller.state.changed.get_connections().size()
+	total += controller.potions.changed.get_connections().size()
 	total += controller.player.status_changed.get_connections().size()
 	return total
 

@@ -3,6 +3,10 @@ extends VBoxContainer
 ## Tên + máu/giáp + hàng status của MỘT Combatant (người chơi hay quái). Tự cập nhật bằng Signal
 ## của chính Combatant đó (signal up): không gọi lên cha, không đổi trạng thái của lõi.
 
+## Chuyển tiếp tooltip của các icon status lên trên (signal up).
+signal tooltip_requested(tooltip: TooltipView, anchor: Rect2)
+signal tooltip_cleared
+
 const DEFEATED_ALPHA := 0.4
 const NAME_FONT_SIZE := 32
 
@@ -62,13 +66,27 @@ func refresh() -> void:
 
 
 func _rebuild_statuses() -> void:
+	var had_hover := false
 	for child in status_row.get_children():
+		had_hover = had_hover or (child as StatusIconUI).is_hovered()
 		status_row.remove_child(child)
 		child.free()
+	if had_hover:
+		tooltip_cleared.emit()  # icon đang trỏ bị thay: không để tooltip mồ côi
 	for view in StatusView.build_all(combatant):
 		var icon := StatusIconUI.new()
 		icon.show_view(view)
+		icon.tooltip_requested.connect(_on_icon_tooltip_requested)
+		icon.tooltip_cleared.connect(_on_icon_tooltip_cleared)
 		status_row.add_child(icon)
+
+
+func _on_icon_tooltip_requested(tooltip: TooltipView, anchor: Rect2) -> void:
+	tooltip_requested.emit(tooltip, anchor)
+
+
+func _on_icon_tooltip_cleared() -> void:
+	tooltip_cleared.emit()
 
 
 func _on_health_changed(_old_hp: int, _new_hp: int) -> void:

@@ -46,6 +46,16 @@ static func for_card(card: CardData, statuses: StatusRegistry) -> TooltipView:
 	return view
 
 
+## Như for_card nhưng tra status bằng `lookup(status_id) -> StatusData` (vd. controller.get_status_data).
+static func for_card_with(card: CardData, lookup: Callable) -> TooltipView:
+	if card == null:
+		push_error("TooltipBuilder.for_card_with: thẻ null")
+		return null
+	var view := TooltipView.new()
+	view.entries = KeywordGlossary.entries_for_card_with(card, lookup)
+	return view
+
+
 ## Ý định quái. info null (ý định ẩn) -> "unknown".
 static func for_intent(info: IntentInfo) -> TooltipView:
 	var view := TooltipView.new()

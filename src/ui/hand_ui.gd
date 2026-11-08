@@ -10,6 +10,9 @@ signal drag_started(card: CardInstance, pointer: Vector2)
 signal drag_moved(card: CardInstance, pointer: Vector2)
 signal drag_ended(card: CardInstance, pointer: Vector2)
 signal drag_cancelled(card: CardInstance)
+## Trỏ chuột vào một thẻ (kèm vùng của thẻ, toạ độ toàn cục) / không còn trỏ thẻ nào. BattleScene dùng để hiện tooltip.
+signal card_hovered(card: CardInstance, anchor: Rect2)
+signal card_hover_ended
 
 const WIDTH := 1500.0
 const CARD_GAP := 14.0
@@ -64,6 +67,8 @@ func unbind() -> void:
 func refresh() -> void:
 	_refresh_pending = false
 	_abort_drag_for_rebuild()
+	if _hovered_uid != -1:
+		card_hover_ended.emit()  # thẻ đang trỏ sắp bị thay
 	for child in get_children():
 		remove_child(child)
 		child.free()
@@ -139,7 +144,9 @@ func begin_drag(card: CardInstance, follow_pointer: bool) -> bool:
 		return false
 	_dragging_uid = card.uid
 	_drag_follows = follow_pointer
-	_hovered_uid = -1
+	if _hovered_uid != -1:
+		_hovered_uid = -1
+		card_hover_ended.emit()
 	_apply_selection()
 	return true
 
@@ -224,11 +231,20 @@ func _restack() -> void:
 
 
 func _on_card_hover_changed(uid: int, hovered: bool) -> void:
+	var cleared := false
 	if hovered:
 		_hovered_uid = uid
 	elif _hovered_uid == uid:
 		_hovered_uid = -1
+		cleared = true
 	_layout()
+	if hovered:
+		var card: CardInstance = _cards_by_uid.get(uid)
+		for card_ui in card_uis:
+			if card != null and card_ui.view.uid == uid:
+				card_hovered.emit(card, card_ui.get_global_rect())
+	elif cleared:
+		card_hover_ended.emit()
 
 
 ## Dựng lại sẽ thay mọi CardUI (mất chuột đang giữ): báo huỷ để bên ngoài dọn trạng thái kéo.

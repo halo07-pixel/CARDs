@@ -2,6 +2,10 @@ class_name StatusIconUI
 extends PanelContainer
 ## Một status: icon + số stack ở góc dưới phải (debuff viền đỏ). Thiếu icon -> chữ viết tắt.
 
+## Hover -> báo tooltip lên trên (không tự hiện); rời chuột -> báo tắt.
+signal tooltip_requested(tooltip: TooltipView, anchor: Rect2)
+signal tooltip_cleared
+
 const ICON_SIZE := Vector2(56, 56)
 const BORDER_COLOR := Color("8a8f98")
 const DEBUFF_BORDER_COLOR := Color("ff5a5a")
@@ -13,6 +17,7 @@ var view: StatusView = null
 var icon_rect: TextureRect
 var amount_label: Label
 var fallback_label: Label
+var _hovered: bool = false
 
 
 func _init() -> void:
@@ -41,6 +46,15 @@ func _init() -> void:
 	amount_label.add_theme_constant_override("outline_size", 4)
 	amount_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	holder.add_child(amount_label)
+	# PASS: nhận hover nhưng click vẫn đi lên (bấm vào status trên quái vẫn là chọn quái làm mục tiêu).
+	mouse_filter = Control.MOUSE_FILTER_PASS
+	UiUtil.ignore_mouse_in_children(self)
+	mouse_entered.connect(_on_mouse_entered)
+	mouse_exited.connect(_on_mouse_exited)
+
+
+func is_hovered() -> bool:
+	return _hovered
 
 
 func show_view(new_view: StatusView) -> void:
@@ -59,3 +73,14 @@ func show_view(new_view: StatusView) -> void:
 	style.set_border_width_all(2)
 	style.set_corner_radius_all(6)
 	add_theme_stylebox_override("panel", style)
+
+
+func _on_mouse_entered() -> void:
+	_hovered = true
+	if view != null:
+		tooltip_requested.emit(TooltipBuilder.for_status(view), get_global_rect())
+
+
+func _on_mouse_exited() -> void:
+	_hovered = false
+	tooltip_cleared.emit()
