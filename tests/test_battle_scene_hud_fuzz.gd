@@ -16,7 +16,7 @@ const POTION_IDS: Array[StringName] = [&"fire_potion", &"weak_potion", &"block_p
 var _data: GameData
 var _log: String = ""
 var _stats := {"potions_used": 0, "potion_targeting": 0, "potion_rejected": 0, "piles_opened": 0, "tooltips": 0,
-		"escapes": 0, "turns": 0}
+		"escapes": 0, "turns": 0, "fx_peak": 0, "fx_drained": 0}
 
 
 func before_each() -> void:
@@ -34,6 +34,8 @@ func test_hud_always_matches_the_controller_under_random_play() -> void:
 	assert_true(_stats["tooltips"] >= 40, "ít lần tooltip hiện: %s" % [_stats])
 	assert_true(_stats["escapes"] >= 10, "ít lần Esc: %s" % [_stats])
 	assert_true(_stats["turns"] >= 20, "ít lượt: %s" % [_stats])
+	assert_true(_stats["fx_peak"] >= 5, "hiệu ứng ít khi xuất hiện: %s" % [_stats])
+	assert_eq(_stats["fx_drained"], SEEDS.size(), "mọi seed phải dọn sạch chữ nổi và thanh máu khi hết hiệu ứng")
 
 
 func _run_seed(seed_value: int) -> void:
@@ -43,6 +45,7 @@ func _run_seed(seed_value: int) -> void:
 	var controller := BattleFactory.create_from_game_data(warrior, warrior.starting_deck, enemy_ids, _data, seed_value,
 			RELIC_IDS, POTION_IDS)
 	var scene := BattleScene.new()
+	scene.effects.speed = 80.0  # bật hiệu ứng (rất nhanh) để fuzz cả lớp trình diễn
 	Engine.get_main_loop().root.add_child(scene)  # cần nằm trong cây để có toạ độ thật cho vùng ý định
 	scene.setup(controller)
 	controller.potion_used.connect(func(_s: int, _p: PotionData, _t: EnemyUnit, _r: Array[EffectResult]) -> void: _stats["potions_used"] += 1)
@@ -66,7 +69,27 @@ func _run_seed(seed_value: int) -> void:
 		_stats["tooltips"] += 1 if scene.tooltip_ui.visible else 0
 		_check(scene, controller, previous_potions, _log)
 		previous_potions = controller.potions.count()
+	await _drain_effects(scene, seed_value)
 	scene.free()
+
+
+## Hết thao tác: chờ mọi chữ nổi và thanh máu trượt kết thúc (tốc độ rất nhanh nên vài chục khung là đủ).
+func _drain_effects(scene: BattleScene, seed_value: int) -> void:
+	for i in 600:
+		if scene.effects_layer.get_child_count() == 0 and not _any_bar_animating(scene):
+			_stats["fx_drained"] += 1
+			return
+		await Engine.get_main_loop().process_frame
+	assert_true(false, "seed %d: hiệu ứng không tự kết thúc (chữ=%d)" % [seed_value, scene.effects_layer.get_child_count()])
+
+
+func _any_bar_animating(scene: BattleScene) -> bool:
+	if scene.hero_ui.health_bar.is_animating():
+		return true
+	for enemy_ui in scene.enemy_uis:
+		if enemy_ui.combatant_ui.health_bar.is_animating():
+			return true
+	return false
 
 
 func _random_action(scene: BattleScene, controller: BattleController, rng: RandomNumberGenerator) -> String:
@@ -169,6 +192,7 @@ func _check(scene: BattleScene, controller: BattleController, previous_potions: 
 	assert_eq(scene.relic_bar_ui.icon_uis.size(), controller.relics.size(), label + " | số relic")
 	_check_exclusive_targeting(scene, controller, label)
 	_check_overlays(scene, label)
+	_check_effects(scene, label)
 
 
 func _check_belt(scene: BattleScene, controller: BattleController, label: String) -> void:
@@ -210,3 +234,17 @@ func _check_overlays(scene: BattleScene, label: String) -> void:
 				or scene.tooltip_ui.entries_box.visible
 		assert_true(has_content, label + " | tooltip rỗng đang hiện")
 	assert_false(scene.is_dragging(), label + " | cảnh còn trạng thái kéo")
+
+
+func _check_effects(scene: BattleScene, label: String) -> void:
+	var layer := scene.effects_layer
+	_stats["fx_peak"] = maxi(_stats["fx_peak"], layer.get_child_count())
+	assert_true(layer.get_child_count() < 3000, label + " | chữ nổi tích tụ quá nhiều")
+	for child in layer.get_children():
+		var text := child as FloatingTextUI
+		assert_true(text != null and not text.text.is_empty(), label + " | chữ nổi rỗng")
+		assert_true(text.modulate.a >= 0.0 and text.modulate.a <= 1.0, label + " | độ mờ ngoài [0,1]")
+		assert_true(is_finite(text.position.x) and is_finite(text.position.y), label + " | vị trí không hữu hạn")
+		assert_true(text.get_meta(EffectsLayerUI.OWNER_META, null) is Combatant, label + " | chữ nổi mất chủ")
+	for enemy_ui in scene.enemy_uis:
+		assert_true(enemy_ui.art_rect.scale.x >= 1.0 and enemy_ui.art_rect.scale.x <= UiFx.POP_SCALE + 0.0001, label + " | scale hình quái lạ")

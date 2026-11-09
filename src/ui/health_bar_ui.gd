@@ -8,11 +8,13 @@ const FILL_COLOR := Color("c0392b")
 const BACKGROUND_COLOR := Color("2a1a1a")
 const BLOCK_FONT_SIZE := 32
 const HP_FONT_SIZE := 24
+const BAR_TWEEN_DURATION := 0.3
 
 var bar: ProgressBar
 var hp_label: Label
 var block_box: HBoxContainer
 var block_label: Label
+var _tween: Tween = null
 
 
 func _init() -> void:
@@ -44,10 +46,25 @@ func _init() -> void:
 	add_child(bar)
 
 
-func set_health(hp: int, max_hp: int) -> void:
+## Chữ hp/max luôn đúng NGAY. Thanh trượt mượt tới giá trị mới nếu `effects` bật và thanh đang ở trong cây;
+## không thì đặt thẳng (mặc định: không hiệu ứng).
+func set_health(hp: int, max_hp: int, effects: EffectsConfig = null) -> void:
 	bar.max_value = maxi(max_hp, 1)
-	bar.value = hp  # ProgressBar (Range) tự giới hạn trong [0, max]
 	hp_label.text = "%d/%d" % [hp, max_hp]
+	if _tween != null:
+		_tween.kill()
+		_tween = null
+	var target := clampf(hp, 0.0, bar.max_value)
+	if effects == null or not effects.is_enabled() or not is_inside_tree() or is_equal_approx(bar.value, target):
+		bar.value = target  # ProgressBar (Range) tự giới hạn trong [0, max]
+		return
+	_tween = create_tween()
+	_tween.tween_property(bar, "value", target, effects.duration(BAR_TWEEN_DURATION))
+
+
+## Thanh máu đang trượt mượt tới giá trị mới.
+func is_animating() -> bool:
+	return _tween != null and _tween.is_valid() and _tween.is_running()
 
 
 func set_block(amount: int) -> void:

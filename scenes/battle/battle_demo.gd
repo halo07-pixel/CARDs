@@ -29,6 +29,7 @@ func _start_battle() -> void:
 		push_error("BattleDemo: không dựng được trận")
 		return
 	battle_scene = BattleScene.new()
+	battle_scene.effects.speed = EffectsConfig.NORMAL_SPEED
 	add_child(battle_scene)
 	battle_scene.setup(controller)
 	battle_scene.restart_requested.connect(_start_battle, CONNECT_DEFERRED)  # tránh giải phóng cảnh trong tín hiệu của chính nó

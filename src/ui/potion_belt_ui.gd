@@ -63,6 +63,13 @@ func set_selected_slot(slot: int) -> void:
 		slot_uis[i].set_selected(i == slot)
 
 
+## Rung ô `slot` (bị từ chối). Trả false nếu ô không tồn tại hoặc hiệu ứng tắt.
+func shake_slot(slot: int, effects: EffectsConfig) -> bool:
+	if slot < 0 or slot >= slot_uis.size():
+		return false
+	return UiFx.shake(slot_uis[slot], effects)
+
+
 func _on_slot_clicked(slot: int) -> void:
 	slot_clicked.emit(slot)
 

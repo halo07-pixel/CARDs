@@ -123,6 +123,16 @@ func set_hovered(card: CardInstance) -> void:
 	_layout()
 
 
+## Rung thẻ `card` (bị từ chối). Trả false nếu thẻ không có trong tay hoặc hiệu ứng tắt.
+func shake_card(card: CardInstance, effects: EffectsConfig) -> bool:
+	if card == null:
+		return false
+	for card_ui in card_uis:
+		if card_ui.view.uid == card.uid:
+			return UiFx.shake(card_ui, effects)
+	return false
+
+
 ## Vẽ lại thẻ `card` với số đã tính theo mục tiêu `target` (Vulnerable...). target null = số thường.
 func set_preview_target(card: CardInstance, target: EnemyUnit) -> void:
 	if controller == null or card == null:

@@ -10,6 +10,7 @@ func test_demo_scene_builds_a_playable_battle() -> void:
 	var battle_scene: BattleScene = demo.battle_scene
 	assert_true(battle_scene != null)
 	assert_eq(battle_scene.enemy_uis.size(), 3)
+	assert_true(battle_scene.effects.is_enabled(), "demo bật hiệu ứng")
 	battle_scene.hand_ui.flush_pending_refresh()
 	assert_eq(battle_scene.hand_ui.card_uis.size(), 5)
 	assert_false(battle_scene.end_turn_button.disabled)
@@ -27,6 +28,7 @@ func test_restart_builds_a_fresh_battle_on_the_next_frame() -> void:
 	await Engine.get_main_loop().process_frame
 	var second: BattleScene = demo.battle_scene
 	assert_ne(second, first)
+	assert_true(second.effects.is_enabled(), "trận dựng lại cũng bật hiệu ứng")
 	assert_eq(second.enemy_uis.size(), 3)
 	assert_false(second.result_overlay.visible)
 	await Engine.get_main_loop().process_frame

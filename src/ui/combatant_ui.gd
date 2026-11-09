@@ -11,6 +11,8 @@ const DEFEATED_ALPHA := 0.4
 const NAME_FONT_SIZE := 32
 
 var combatant: Combatant = null
+## Cài đặt hiệu ứng dùng chung (do BattleScene gán); null = không hiệu ứng.
+var effects: EffectsConfig = null
 var name_label: Label
 var health_bar: HealthBarUI
 var status_row: HFlowContainer
@@ -90,7 +92,7 @@ func _on_icon_tooltip_cleared() -> void:
 
 
 func _on_health_changed(_old_hp: int, _new_hp: int) -> void:
-	health_bar.set_health(combatant.hp, combatant.max_hp)
+	health_bar.set_health(combatant.hp, combatant.max_hp, effects)
 
 
 func _on_block_changed(_old_block: int, _new_block: int) -> void:

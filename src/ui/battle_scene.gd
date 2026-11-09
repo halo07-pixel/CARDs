@@ -33,12 +33,16 @@ const MESSAGE_COLOR := Color("ffd27a")
 var controller: BattleController = null
 var intent := PlayIntent.new()
 var potion_intent := PotionIntent.new()
+## Hiệu ứng trình diễn (chữ nổi, thanh máu mượt, rung, nảy). MẶC ĐỊNH TẮT (speed 0): nơi tạo màn chơi thật
+## (demo, run) đặt speed = EffectsConfig.NORMAL_SPEED. Không thay đối tượng này, chỉ đổi speed.
+var effects := EffectsConfig.new()
 var enemy_row: HBoxContainer
 var enemy_uis: Array[EnemyUI] = []
 var hero_ui: CombatantUI
 var hand_ui: HandUI
 var potion_belt_ui: PotionBeltUI
 var relic_bar_ui: RelicBarUI
+var effects_layer: EffectsLayerUI
 var tooltip_ui: TooltipUI
 var pile_viewer: PileViewerUI
 var energy_ui: EnergyUI
@@ -76,6 +80,7 @@ func _init() -> void:
 	hero_ui = CombatantUI.new()
 	hero_ui.position = HERO_POSITION
 	hero_ui.custom_minimum_size = Vector2(HERO_WIDTH, 0)
+	hero_ui.effects = effects
 	hero_ui.tooltip_requested.connect(_on_tooltip_requested)
 	hero_ui.tooltip_cleared.connect(_on_tooltip_cleared)
 	add_child(hero_ui)
@@ -137,6 +142,10 @@ func _init() -> void:
 	target_arrow = TargetArrowUI.new()
 	add_child(target_arrow)
 
+	effects_layer = EffectsLayerUI.new()
+	effects_layer.config = effects
+	add_child(effects_layer)
+
 	tooltip_ui = TooltipUI.new()
 	add_child(tooltip_ui)
 
@@ -161,6 +170,7 @@ func setup(p_controller: BattleController) -> void:
 	controller = p_controller
 	for unit in controller.enemies:
 		var enemy_ui := EnemyUI.new()
+		enemy_ui.combatant_ui.effects = effects
 		enemy_ui.bind(unit)
 		enemy_ui.clicked.connect(_on_enemy_clicked)
 		enemy_ui.tooltip_requested.connect(_on_tooltip_requested)
@@ -179,6 +189,7 @@ func setup(p_controller: BattleController) -> void:
 	controller.intent_changed.connect(_on_intent_changed)
 	controller.card_played.connect(_on_card_played)
 	controller.potion_used.connect(_on_potion_used)
+	controller.triggered.connect(_on_triggered)
 	controller.enemy_acted.connect(_on_enemy_acted)
 	controller.enemy_defeated.connect(_on_enemy_defeated)
 	controller.battle_ended.connect(_on_battle_ended)
@@ -194,6 +205,7 @@ func teardown() -> void:
 		controller.intent_changed.disconnect(_on_intent_changed)
 		controller.card_played.disconnect(_on_card_played)
 		controller.potion_used.disconnect(_on_potion_used)
+		controller.triggered.disconnect(_on_triggered)
 		controller.enemy_acted.disconnect(_on_enemy_acted)
 		controller.enemy_defeated.disconnect(_on_enemy_defeated)
 		controller.battle_ended.disconnect(_on_battle_ended)
@@ -217,6 +229,7 @@ func teardown() -> void:
 	hand_ui.set_selected(null)
 	pile_viewer.close()
 	tooltip_ui.hide_tooltip()
+	effects_layer.clear()
 	result_overlay.hide_result()
 	message_label.text = ""
 	turn_label.text = ""
@@ -293,6 +306,7 @@ func _apply_potion(decision: PotionIntent.Decision) -> void:
 			show_message(RejectionText.CHOOSE_TARGET)
 		PotionIntent.Outcome.REJECTED:
 			show_message(RejectionText.for_reason(decision.reason))
+			potion_belt_ui.shake_slot(decision.slot, effects)
 		PotionIntent.Outcome.CANCELLED:
 			show_message("")
 	_sync_targeting()
@@ -307,6 +321,7 @@ func _apply(decision: PlayIntent.Decision) -> void:
 			show_message(RejectionText.CHOOSE_TARGET)
 		PlayIntent.Outcome.REJECTED:
 			show_message(RejectionText.for_reason(decision.reason))
+			hand_ui.shake_card(decision.card, effects)
 		PlayIntent.Outcome.CANCELLED:
 			show_message("")
 	_sync_targeting()
@@ -321,6 +336,7 @@ func _on_drag_started(card: CardInstance, pointer: Vector2) -> void:
 	if reason != &"":
 		show_message(RejectionText.for_reason(reason))
 		hand_ui.cancel_drag()  # không bắt đầu kéo thẻ không chơi được
+		hand_ui.shake_card(card, effects)
 		return
 	intent.cancel()  # bỏ lựa chọn bằng click (nếu có)
 	potion_intent.cancel()
@@ -440,15 +456,22 @@ func _on_intent_changed(_unit: EnemyUnit) -> void:
 	_refresh_intents()
 
 
-func _on_card_played(_card: CardInstance, _target: EnemyUnit, _results: Array[EffectResult]) -> void:
+func _on_card_played(_card: CardInstance, _target: EnemyUnit, results: Array[EffectResult]) -> void:
+	_show_effects(results)
 	_refresh_all()
 
 
-func _on_potion_used(_slot: int, _potion: PotionData, _target: EnemyUnit, _results: Array[EffectResult]) -> void:
+func _on_potion_used(_slot: int, _potion: PotionData, _target: EnemyUnit, results: Array[EffectResult]) -> void:
+	_show_effects(results)
 	_refresh_all()
 
 
-func _on_enemy_acted(_unit: EnemyUnit, _move: EnemyMove, _results: Array[EffectResult]) -> void:
+func _on_triggered(_owner: Combatant, _source_key: StringName, results: Array[EffectResult]) -> void:
+	_show_effects(results)
+
+
+func _on_enemy_acted(_unit: EnemyUnit, _move: EnemyMove, results: Array[EffectResult]) -> void:
+	_show_effects(results)
 	_refresh_all()
 
 
@@ -494,3 +517,33 @@ func _on_pile_clicked(pile_name: StringName) -> void:
 	var views := PileView.build(controller.deck, pile_name, controller.player)
 	var title: String = PileCounterUI.TITLES.get(pile_name, String(pile_name).capitalize())
 	pile_viewer.show_pile("%s pile (%d)" % [title, views.size()], views)
+
+
+## --- Hiệu ứng trình diễn ---
+
+## Chữ nổi cho các kết quả hiệu ứng, và nảy/nháy ở nơi bị trúng đòn. Tắt hiệu ứng -> không làm gì.
+func _show_effects(results: Array[EffectResult]) -> void:
+	if controller == null or not effects.is_enabled():
+		return
+	var cues := EffectCueBuilder.build(results, controller.player, controller.get_status_data)
+	effects_layer.show_cues(cues, _anchor_of)
+	for cue in cues:
+		if cue.kind == EffectCue.Kind.DAMAGE or cue.kind == EffectCue.Kind.LOSE_HP:
+			UiFx.pop(_visual_of(cue.target), effects, _enemy_ui_of(cue.target) != null)
+
+
+## Vùng toàn cục để chữ nổi bám theo: hình quái, hoặc khung người chơi.
+func _anchor_of(combatant: Combatant) -> Rect2:
+	return _visual_of(combatant).get_global_rect()
+
+
+func _visual_of(combatant: Combatant) -> Control:
+	var enemy_ui := _enemy_ui_of(combatant)
+	return enemy_ui.art_rect if enemy_ui != null else hero_ui
+
+
+func _enemy_ui_of(combatant: Combatant) -> EnemyUI:
+	for enemy_ui in enemy_uis:
+		if enemy_ui.unit.combatant == combatant:
+			return enemy_ui
+	return null
