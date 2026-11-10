@@ -15,8 +15,9 @@ const POTION_IDS: Array[StringName] = [&"fire_potion", &"weak_potion", &"block_p
 
 var _data: GameData
 var _log: String = ""
+var _bad_sfx: Array = []
 var _stats := {"potions_used": 0, "potion_targeting": 0, "potion_rejected": 0, "piles_opened": 0, "tooltips": 0,
-		"escapes": 0, "turns": 0, "fx_peak": 0, "fx_drained": 0, "mid_enemy_turn": 0, "enemy_steps": 0}
+		"escapes": 0, "turns": 0, "fx_peak": 0, "fx_drained": 0, "mid_enemy_turn": 0, "enemy_steps": 0, "sfx": 0}
 
 
 func before_each() -> void:
@@ -37,6 +38,8 @@ func test_hud_always_matches_the_controller_under_random_play() -> void:
 	assert_true(_stats["fx_peak"] >= 5, "hiệu ứng ít khi xuất hiện: %s" % [_stats])
 	assert_true(_stats["mid_enemy_turn"] >= 40, "ít khi quan sát giữa lượt quái: %s" % [_stats])
 	assert_true(_stats["enemy_steps"] >= 40, "ít bước lượt quái được đẩy: %s" % [_stats])
+	assert_true(_stats["sfx"] >= 300, "ít âm thanh được phát: %s" % [_stats])
+	assert_eq(_bad_sfx, [], "âm thanh lạ hoặc rỗng không nằm trong SfxMap.ALL")
 	assert_eq(_stats["fx_drained"], SEEDS.size(), "mọi seed phải dọn sạch chữ nổi và thanh máu khi hết hiệu ứng")
 
 
@@ -46,6 +49,11 @@ func _run_seed(seed_value: int) -> void:
 	enemy_ids.assign(ENEMY_SETS[seed_value % ENEMY_SETS.size()])
 	var controller := BattleFactory.create_from_game_data(warrior, warrior.starting_deck, enemy_ids, _data, seed_value,
 			RELIC_IDS, POTION_IDS)
+	var listener := func(sfx_name: StringName) -> void:
+		_stats["sfx"] += 1
+		if sfx_name == &"" or not SfxMap.ALL.has(sfx_name):
+			_bad_sfx.append(sfx_name)
+	EventBus.sfx_requested.connect(listener)
 	var scene := BattleScene.new()
 	scene.effects.speed = 80.0  # bật hiệu ứng (rất nhanh) để fuzz cả lớp trình diễn
 	Engine.get_main_loop().root.add_child(scene)  # cần nằm trong cây để có toạ độ thật cho vùng ý định
@@ -73,6 +81,7 @@ func _run_seed(seed_value: int) -> void:
 		previous_potions = controller.potions.count()
 	_finish_enemy_turn(scene)
 	await _drain_effects(scene, seed_value)
+	EventBus.sfx_requested.disconnect(listener)
 	scene.free()
 
 

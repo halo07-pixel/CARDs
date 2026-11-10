@@ -312,6 +312,7 @@ func _apply_potion(decision: PotionIntent.Decision) -> void:
 			show_message(RejectionText.CHOOSE_TARGET)
 		PotionIntent.Outcome.REJECTED:
 			show_message(RejectionText.for_reason(decision.reason))
+			_play_sfx(SfxMap.REJECT)
 			potion_belt_ui.shake_slot(decision.slot, effects)
 		PotionIntent.Outcome.CANCELLED:
 			show_message("")
@@ -327,6 +328,7 @@ func _apply(decision: PlayIntent.Decision) -> void:
 			show_message(RejectionText.CHOOSE_TARGET)
 		PlayIntent.Outcome.REJECTED:
 			show_message(RejectionText.for_reason(decision.reason))
+			_play_sfx(SfxMap.REJECT)
 			hand_ui.shake_card(decision.card, effects)
 		PlayIntent.Outcome.CANCELLED:
 			show_message("")
@@ -342,6 +344,7 @@ func _on_drag_started(card: CardInstance, pointer: Vector2) -> void:
 	if reason != &"":
 		show_message(RejectionText.for_reason(reason))
 		hand_ui.cancel_drag()  # không bắt đầu kéo thẻ không chơi được
+		_play_sfx(SfxMap.REJECT)
 		hand_ui.shake_card(card, effects)
 		return
 	intent.cancel()  # bỏ lựa chọn bằng click (nếu có)
@@ -416,9 +419,11 @@ func _on_end_turn_pressed() -> void:
 	show_message("")
 	# Quái đi từng con theo nhịp của EnemyTurnPlayer. Không diễn được (hiệu ứng tắt, cảnh chưa ở trong cây...) thì chạy
 	# nốt ngay như end_player_turn(), không để lượt quái kẹt giữa chừng.
-	if controller.begin_enemy_turn() and not enemy_turn_player.start(controller, effects):
-		while controller.is_enemy_turn_in_progress():
-			controller.run_next_enemy()
+	if controller.begin_enemy_turn():
+		_play_sfx(SfxMap.END_TURN)
+		if not enemy_turn_player.start(controller, effects):
+			while controller.is_enemy_turn_in_progress():
+				controller.run_next_enemy()
 	_refresh_all()
 
 
@@ -467,11 +472,13 @@ func _on_intent_changed(_unit: EnemyUnit) -> void:
 
 
 func _on_card_played(_card: CardInstance, _target: EnemyUnit, results: Array[EffectResult]) -> void:
+	_play_sfx(SfxMap.CARD_PLAY)
 	_show_effects(results)
 	_refresh_all()
 
 
 func _on_potion_used(_slot: int, _potion: PotionData, _target: EnemyUnit, results: Array[EffectResult]) -> void:
+	_play_sfx(SfxMap.POTION)
 	_show_effects(results)
 	_refresh_all()
 
@@ -489,12 +496,14 @@ func _on_enemy_defeated(_unit: EnemyUnit) -> void:
 	_refresh_all()
 
 
-func _on_battle_ended(_victory: bool) -> void:
+func _on_battle_ended(victory: bool) -> void:
+	_play_sfx(SfxMap.for_battle_end(victory))
 	_refresh_all()
 
 
 func _on_action_rejected(reason: StringName) -> void:
 	show_message(RejectionText.for_reason(reason))
+	_play_sfx(SfxMap.REJECT)
 
 
 ## --- Tooltip và xem pile ---
@@ -533,9 +542,13 @@ func _on_pile_clicked(pile_name: StringName) -> void:
 
 ## Chữ nổi cho các kết quả hiệu ứng, và nảy/nháy ở nơi bị trúng đòn. Tắt hiệu ứng -> không làm gì.
 func _show_effects(results: Array[EffectResult]) -> void:
-	if controller == null or not effects.is_enabled():
+	if controller == null:
 		return
 	var cues := EffectCueBuilder.build(results, controller.player, controller.get_status_data)
+	for sfx in SfxMap.for_cues(cues):  # âm thanh không phụ thuộc hiệu ứng hình
+		_play_sfx(sfx)
+	if not effects.is_enabled():
+		return
 	effects_layer.show_cues(cues, _anchor_of)
 	for cue in cues:
 		if cue.kind == EffectCue.Kind.DAMAGE or cue.kind == EffectCue.Kind.LOSE_HP:
@@ -564,3 +577,8 @@ func _on_enemy_step_started(unit: EnemyUnit) -> void:
 	var enemy_ui := _enemy_ui_of(unit.combatant)
 	if enemy_ui != null:
 		UiFx.pop(enemy_ui.art_rect, effects)
+
+
+## Phát một âm thanh qua EventBus (AudioManager nghe và phát; thiếu tệp thì AudioManager tự bỏ qua).
+func _play_sfx(sfx_name: StringName) -> void:
+	EventBus.sfx_requested.emit(sfx_name)
