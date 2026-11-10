@@ -3,7 +3,7 @@ extends "res://tests/test_case.gd"
 ## Sau MỖI bước so mọi thứ HUD với controller. Mọi chỗ lệch = lỗi (kèm seed + bước để tái hiện).
 
 const SEEDS: Array[int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-const STEPS_PER_SEED := 150
+const STEPS_PER_SEED := 260
 const EXTRA_STEPS_AFTER_END := 4
 const ENEMY_SETS: Array = [
 	[&"slime", &"goblin", &"acolyte"],
@@ -16,7 +16,7 @@ const POTION_IDS: Array[StringName] = [&"fire_potion", &"weak_potion", &"block_p
 var _data: GameData
 var _log: String = ""
 var _stats := {"potions_used": 0, "potion_targeting": 0, "potion_rejected": 0, "piles_opened": 0, "tooltips": 0,
-		"escapes": 0, "turns": 0, "fx_peak": 0, "fx_drained": 0}
+		"escapes": 0, "turns": 0, "fx_peak": 0, "fx_drained": 0, "mid_enemy_turn": 0, "enemy_steps": 0}
 
 
 func before_each() -> void:
@@ -35,6 +35,8 @@ func test_hud_always_matches_the_controller_under_random_play() -> void:
 	assert_true(_stats["escapes"] >= 10, "ít lần Esc: %s" % [_stats])
 	assert_true(_stats["turns"] >= 20, "ít lượt: %s" % [_stats])
 	assert_true(_stats["fx_peak"] >= 5, "hiệu ứng ít khi xuất hiện: %s" % [_stats])
+	assert_true(_stats["mid_enemy_turn"] >= 40, "ít khi quan sát giữa lượt quái: %s" % [_stats])
+	assert_true(_stats["enemy_steps"] >= 40, "ít bước lượt quái được đẩy: %s" % [_stats])
 	assert_eq(_stats["fx_drained"], SEEDS.size(), "mọi seed phải dọn sạch chữ nổi và thanh máu khi hết hiệu ứng")
 
 
@@ -69,11 +71,21 @@ func _run_seed(seed_value: int) -> void:
 		_stats["tooltips"] += 1 if scene.tooltip_ui.visible else 0
 		_check(scene, controller, previous_potions, _log)
 		previous_potions = controller.potions.count()
+	_finish_enemy_turn(scene)
 	await _drain_effects(scene, seed_value)
 	scene.free()
 
 
 ## Hết thao tác: chờ mọi chữ nổi và thanh máu trượt kết thúc (tốc độ rất nhanh nên vài chục khung là đủ).
+## Hết thao tác: diễn nốt lượt quái đang dở (nếu có) cho tới khi xong.
+func _finish_enemy_turn(scene: BattleScene) -> void:
+	for i in 60:
+		if not scene.enemy_turn_player.is_playing():
+			return
+		scene.enemy_turn_player.fire_now()
+	assert_true(false, "lượt quái không tự kết thúc sau 60 nhịp")
+
+
 func _drain_effects(scene: BattleScene, seed_value: int) -> void:
 	for i in 600:
 		if scene.effects_layer.get_child_count() == 0 and not _any_bar_animating(scene):
@@ -134,10 +146,15 @@ func _random_action(scene: BattleScene, controller: BattleController, rng: Rando
 	if roll < 72:
 		scene.pile_viewer.close_button.pressed.emit()
 		return "đóng pile"
-	if roll < 86:
+	if roll < 80:
 		return _hover(scene, rng, true)
-	if roll < 93:
+	if roll < 85:
 		return _hover(scene, rng, false)
+	if roll < 96:
+		var was_playing := scene.enemy_turn_player.is_playing()
+		scene.enemy_turn_player.fire_now()  # đẩy nhịp lượt quái (như hết giờ)
+		_stats["enemy_steps"] += 1 if was_playing else 0
+		return "đẩy nhịp lượt quái"
 	scene._on_potion_slot_clicked(rng.randi_range(3, 9))  # ô không tồn tại
 	return "bấm ô potion không tồn tại"
 
@@ -193,6 +210,7 @@ func _check(scene: BattleScene, controller: BattleController, previous_potions: 
 	_check_exclusive_targeting(scene, controller, label)
 	_check_overlays(scene, label)
 	_check_effects(scene, label)
+	_check_enemy_turn(scene, controller, label)
 
 
 func _check_belt(scene: BattleScene, controller: BattleController, label: String) -> void:
@@ -248,3 +266,21 @@ func _check_effects(scene: BattleScene, label: String) -> void:
 		assert_true(text.get_meta(EffectsLayerUI.OWNER_META, null) is Combatant, label + " | chữ nổi mất chủ")
 	for enemy_ui in scene.enemy_uis:
 		assert_true(enemy_ui.art_rect.scale.x >= 1.0 and enemy_ui.art_rect.scale.x <= UiFx.POP_SCALE + 0.0001, label + " | scale hình quái lạ")
+
+
+## Lượt quái diễn theo nhịp: lõi và EnemyTurnPlayer luôn khớp nhau ở mọi thời điểm quan sát.
+func _check_enemy_turn(scene: BattleScene, controller: BattleController, label: String) -> void:
+	var in_progress := controller.is_enemy_turn_in_progress()
+	var playing := scene.enemy_turn_player.is_playing()
+	if controller.state.phase == BattleState.Phase.ENEMY_TURN:
+		_stats["mid_enemy_turn"] += 1
+		assert_true(in_progress, label + " | pha lượt quái mà lõi không có lượt quái chạy dở")
+		assert_true(playing, label + " | pha lượt quái mà không ai đang diễn (kẹt)")
+		assert_true(scene.end_turn_button.disabled, label + " | End Turn mở trong lượt quái")
+		assert_eq(scene.potion_belt_ui.slot_uis.size(), 3, label)
+		for slot_ui in scene.potion_belt_ui.slot_uis:
+			assert_false(slot_ui.view.usable, label + " | potion dùng được trong lượt quái")
+	if in_progress:
+		assert_true(playing, label + " | lõi còn quái chưa đi mà không ai đang diễn")
+	if controller.state.is_player_turn():
+		assert_false(in_progress, label + " | lượt người chơi mà vẫn còn lượt quái chạy dở")

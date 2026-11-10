@@ -31,6 +31,14 @@ func _play_first_card(scene: BattleScene, controller: BattleController) -> void:
 	scene.hand_ui.card_clicked.emit(controller.deck.get_pile(Deck.HAND)[0])
 
 
+## Hiệu ứng bật: lượt quái diễn theo nhịp; đẩy nhịp tay tới hết lượt.
+func _finish_enemy_turn(scene: BattleScene) -> void:
+	for i in 30:
+		if not scene.enemy_turn_player.is_playing():
+			return
+		scene.enemy_turn_player.fire_now()
+
+
 func _has_fx(control: Control) -> bool:
 	return control.has_meta(UiFx.TWEEN_META)
 
@@ -99,6 +107,10 @@ func test_enemy_turn_shows_a_number_on_the_hero_for_each_attacker() -> void:
 	var controller := Hud.controller([], [], 2)
 	var scene := _scene_for(controller)
 	scene.end_turn_button.pressed.emit()
+	assert_eq(_texts(scene), [], "chưa quái nào đi: chưa có chữ")
+	scene.enemy_turn_player.fire_now()  # hết nhịp chuẩn bị của quái đầu
+	assert_eq(_texts(scene), ["6"], "quái đầu đánh: chỉ một số")
+	_finish_enemy_turn(scene)
 	assert_eq(_texts(scene), ["6", "6"])
 	assert_true(_has_fx(scene.hero_ui), "người chơi bị trúng: nảy")
 	var owners: Array = []
@@ -114,6 +126,7 @@ func test_a_blocked_attack_says_blocked_and_does_not_pop() -> void:
 	scene.effects_layer.clear()
 	UiFx.reset(scene.hero_ui)
 	scene.end_turn_button.pressed.emit()
+	_finish_enemy_turn(scene)
 	assert_eq(_texts(scene), [EffectCueBuilder.BLOCKED_TEXT])
 	assert_false(_has_fx(scene.hero_ui))
 
@@ -156,6 +169,7 @@ func test_enemy_and_hero_health_bars_slide_but_text_is_exact() -> void:
 	assert_true(enemy_bar.is_animating())
 	assert_eq(enemy_bar.hp_label.text, "%d/40" % controller.enemies[0].combatant.hp)
 	scene.end_turn_button.pressed.emit()
+	_finish_enemy_turn(scene)
 	var hero_bar := scene.hero_ui.health_bar
 	assert_true(hero_bar.is_animating())
 	assert_eq(hero_bar.hp_label.text, "%d/80" % controller.player.hp)

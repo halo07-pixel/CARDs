@@ -1,7 +1,7 @@
 extends SceneTree
 ## Chụp HUD ĐANG chạy hiệu ứng (chữ nổi, nảy/nháy, thanh máu mượt, rung thẻ bị từ chối) bằng thời gian thật.
 ##   xvfb-run -a godot --path . -s res://tools/capture_fx.gd --resolution 1920x1080 -- --out=/tmp/fx
-## Ra các ảnh <out>_1_damage.png ... <out>_5_enemy_turn.png
+## Ra các ảnh <out>_1_damage.png ... <out>_8_enemy_turn_done.png
 
 const ENEMY_IDS: Array[StringName] = [&"slime", &"spiker", &"toxic_slug"]
 const RELIC_IDS: Array[StringName] = [&"burning_blood", &"anchor", &"vajra", &"bronze_scales"]
@@ -53,8 +53,14 @@ func _initialize() -> void:
 
 	await _wait(1.2)
 	scene.end_turn_button.pressed.emit()
-	await _wait(0.8)
-	await _snap("5_enemy_turn")
+	await _wait(0.45)
+	await _snap("5_enemy_windup")  # quái đầu nảy lên báo sắp đi, chưa đánh
+	await _wait(1.0)
+	await _snap("6_enemy_first_acted")  # chỉ quái đầu đã đánh: chỉ có số của nó
+	await _wait(2.6)
+	await _snap("7_enemy_mid_turn")  # quái kế tiếp đang đi
+	await _wait(5.0)
+	await _snap("8_enemy_turn_done")  # hết lượt quái, sang lượt người chơi
 	quit()
 
 

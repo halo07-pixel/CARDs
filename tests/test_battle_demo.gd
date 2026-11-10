@@ -15,6 +15,8 @@ func test_demo_scene_builds_a_playable_battle() -> void:
 	assert_eq(battle_scene.hand_ui.card_uis.size(), 5)
 	assert_false(battle_scene.end_turn_button.disabled)
 	battle_scene.end_turn_button.pressed.emit()
+	for i in 30:  # hiệu ứng bật: quái đi từng con theo nhịp; đẩy nhịp tay cho test
+		battle_scene.enemy_turn_player.fire_now()
 	assert_eq(battle_scene.turn_label.text, "Turn 2")
 	demo.free()
 

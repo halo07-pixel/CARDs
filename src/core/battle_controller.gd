@@ -3,6 +3,8 @@ extends ResolverContext
 ## Điều phối một trận đấu: lượt người chơi, lượt quái, thắng/thua. Đây là NƠI DUY NHẤT UI gọi xuống
 ## (play_card, end_player_turn); mọi thay đổi được báo lên bằng Signal ("call down, signal up").
 ## Mọi hành động đều kiểm tra state trước; bị từ chối thì KHÔNG thay đổi gì và phát action_rejected.
+## Lượt quái chạy được từng bước (begin_enemy_turn / run_next_enemy) để UI diễn tuần tự; end_player_turn() là
+## đường tắt chạy hết mọi bước cho bot, mô phỏng và test.
 ## Đồng thời đóng vai ResolverContext cho EffectResolver (rút bài, năng lượng, tra status, RNG).
 
 signal energy_changed(old_energy: int, new_energy: int)
@@ -42,6 +44,7 @@ var end_reason: StringName = &""
 var _status_registry: StatusRegistry = null
 var _rng: RandomNumberGenerator = null
 var _reported_dead: Dictionary = {}
+var _enemy_cursor: int = -1  ## chỉ số quái kế tiếp được xét trong lượt quái; -1 = không có lượt quái đang chạy dở
 var _triggers := TriggerRunner.new()
 
 
@@ -133,7 +136,20 @@ func play_card(card: CardInstance, target: EnemyUnit = null) -> bool:
 	return true
 
 
+## Kết thúc lượt người chơi và chạy TRỌN lượt quái (đường tắt cho bot/mô phỏng/test).
+## UI muốn diễn từng quái thì gọi begin_enemy_turn() rồi run_next_enemy() lặp lại.
 func end_player_turn() -> bool:
+	if not begin_enemy_turn():
+		return false
+	while is_enemy_turn_in_progress():
+		run_next_enemy()
+	return true
+
+
+## Kết thúc lượt người chơi (TURN_END, bỏ bài...) và sang lượt quái, nhưng CHƯA cho quái nào đi.
+## Trận kết thúc ngay trong bước này (vd. chết vì hiệu ứng cuối lượt) thì không có lượt quái nào chạy dở
+## (is_enemy_turn_in_progress() = false). Bị từ chối nếu không phải lượt người chơi.
+func begin_enemy_turn() -> bool:
 	if state.is_terminal():
 		return _reject(REASON_BATTLE_OVER)
 	if not state.is_player_turn():
@@ -144,8 +160,43 @@ func end_player_turn() -> bool:
 	deck.end_turn_discard()
 	player.end_turn()
 	state.transition(BattleState.Phase.ENEMY_TURN)
-	_run_enemy_turn()
+	turn_started.emit(turn, false)
+	_enemy_cursor = 0
 	return true
+
+
+## Đang trong lượt quái (đã begin_enemy_turn, chưa đóng lượt).
+func is_enemy_turn_in_progress() -> bool:
+	return _enemy_cursor >= 0
+
+
+## Quái sống sẽ đi kế tiếp (không chạy gì); null nếu không có lượt quái đang chạy dở. UI dùng để diễn trước khi quái đi.
+func peek_next_enemy() -> EnemyUnit:
+	var index := _next_living_enemy_index()
+	return enemies[index] if index >= 0 else null
+
+
+## Chạy lượt của quái sống kế tiếp rồi trả quái đó. Quái cuối đi xong thì đóng lượt quái ngay trong lời gọi này
+## (sang lượt người chơi mới hoặc kết thúc trận). Trận kết thúc giữa chừng thì các quái sau không đi nữa.
+## Không có lượt quái đang chạy dở -> trả null, không đổi gì.
+func run_next_enemy() -> EnemyUnit:
+	if _enemy_cursor < 0:
+		return null
+	if state.is_terminal():
+		_enemy_cursor = -1
+		return null
+	var index := _next_living_enemy_index()
+	if index == -1:
+		_close_enemy_turn()
+		return null
+	var unit := enemies[index]
+	_enemy_cursor = index + 1
+	if not _run_enemy_unit_turn(unit, [player] as Array[Combatant]):
+		_enemy_cursor = -1  # trận đã kết thúc giữa chừng
+		return unit
+	if _next_living_enemy_index() == -1:
+		_close_enemy_turn()
+	return unit
 
 
 ## Dùng potion ở ô `slot` (không tốn năng lượng). target chỉ cần với potion nhắm một quái.
@@ -327,14 +378,19 @@ func _resolve_effects(effects: Array[EffectData], target: EnemyUnit, repeat: int
 	return results
 
 
-func _run_enemy_turn() -> void:
-	turn_started.emit(turn, false)
-	var opponents: Array[Combatant] = [player]
-	for unit in enemies:
-		if state.is_terminal():
-			return
-		if unit.is_alive() and not _run_enemy_unit_turn(unit, opponents):
-			return
+## Chỉ số quái sống kế tiếp kể từ con trỏ lượt quái; -1 nếu hết quái hoặc không có lượt quái chạy dở.
+func _next_living_enemy_index() -> int:
+	if _enemy_cursor < 0:
+		return -1
+	for i in range(_enemy_cursor, enemies.size()):
+		if enemies[i].is_alive():
+			return i
+	return -1
+
+
+## Đóng lượt quái: kiểm tra kết thúc, trần lượt, ý định mới rồi sang lượt người chơi.
+func _close_enemy_turn() -> void:
+	_enemy_cursor = -1
 	state.transition(BattleState.Phase.CHECK_END)
 	if _check_end():
 		return

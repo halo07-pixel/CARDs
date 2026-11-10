@@ -43,6 +43,7 @@ var hand_ui: HandUI
 var potion_belt_ui: PotionBeltUI
 var relic_bar_ui: RelicBarUI
 var effects_layer: EffectsLayerUI
+var enemy_turn_player: EnemyTurnPlayer
 var tooltip_ui: TooltipUI
 var pile_viewer: PileViewerUI
 var energy_ui: EnergyUI
@@ -142,6 +143,10 @@ func _init() -> void:
 	target_arrow = TargetArrowUI.new()
 	add_child(target_arrow)
 
+	enemy_turn_player = EnemyTurnPlayer.new()
+	enemy_turn_player.step_started.connect(_on_enemy_step_started)
+	add_child(enemy_turn_player)
+
 	effects_layer = EffectsLayerUI.new()
 	effects_layer.config = effects
 	add_child(effects_layer)
@@ -227,6 +232,7 @@ func teardown() -> void:
 	intent.cancel()
 	potion_intent.cancel()
 	hand_ui.set_selected(null)
+	enemy_turn_player.stop()
 	pile_viewer.close()
 	tooltip_ui.hide_tooltip()
 	effects_layer.clear()
@@ -408,7 +414,11 @@ func _on_end_turn_pressed() -> void:
 	intent.cancel()  # tường minh; sync cũng sẽ bỏ chọn khi sang lượt quái
 	potion_intent.cancel()
 	show_message("")
-	controller.end_player_turn()
+	# Quái đi từng con theo nhịp của EnemyTurnPlayer. Không diễn được (hiệu ứng tắt, cảnh chưa ở trong cây...) thì chạy
+	# nốt ngay như end_player_turn(), không để lượt quái kẹt giữa chừng.
+	if controller.begin_enemy_turn() and not enemy_turn_player.start(controller, effects):
+		while controller.is_enemy_turn_in_progress():
+			controller.run_next_enemy()
 	_refresh_all()
 
 
@@ -547,3 +557,10 @@ func _enemy_ui_of(combatant: Combatant) -> EnemyUI:
 		if enemy_ui.unit.combatant == combatant:
 			return enemy_ui
 	return null
+
+
+## Quái sắp đi (chưa đi): nảy nhẹ để người chơi biết quái nào. Hiệu ứng chữ/nảy khi trúng đòn do tín hiệu của lõi lo.
+func _on_enemy_step_started(unit: EnemyUnit) -> void:
+	var enemy_ui := _enemy_ui_of(unit.combatant)
+	if enemy_ui != null:
+		UiFx.pop(enemy_ui.art_rect, effects)
