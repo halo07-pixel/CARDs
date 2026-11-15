@@ -53,8 +53,8 @@ func _run_seed(seed_value: int) -> void:
 		_stats["sfx"] += 1
 		if sfx_name == &"" or not SfxMap.ALL.has(sfx_name):
 			_bad_sfx.append(sfx_name)
-	EventBus.sfx_requested.connect(listener)
 	var scene := BattleScene.new()
+	scene.sfx_requested.connect(listener)
 	scene.effects.speed = 80.0  # bật hiệu ứng (rất nhanh) để fuzz cả lớp trình diễn
 	Engine.get_main_loop().root.add_child(scene)  # cần nằm trong cây để có toạ độ thật cho vùng ý định
 	scene.setup(controller)
@@ -81,7 +81,6 @@ func _run_seed(seed_value: int) -> void:
 		previous_potions = controller.potions.count()
 	_finish_enemy_turn(scene)
 	await _drain_effects(scene, seed_value)
-	EventBus.sfx_requested.disconnect(listener)
 	scene.free()
 
 

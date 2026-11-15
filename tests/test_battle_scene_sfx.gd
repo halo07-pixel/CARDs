@@ -1,5 +1,5 @@
 extends "res://tests/test_case.gd"
-## BattleScene phát âm thanh qua EventBus.sfx_requested (UI không biết gì về AudioManager). Âm thanh KHÔNG phụ thuộc
+## BattleScene báo âm thanh lên bằng tín hiệu sfx_requested (UI không biết gì về AudioManager hay EventBus). Âm thanh KHÔNG phụ thuộc
 ## hiệu ứng hình: tắt hay bật hiệu ứng, cùng thao tác thì cùng danh sách âm thanh.
 
 const Hud := preload("res://tests/hud_factory.gd")
@@ -14,11 +14,9 @@ var _listener: Callable
 func before_each() -> void:
 	_heard = []
 	_listener = func(sfx_name: StringName) -> void: _heard.append(String(sfx_name))
-	EventBus.sfx_requested.connect(_listener)
 
 
 func after_each() -> void:
-	EventBus.sfx_requested.disconnect(_listener)
 	if _scene != null:
 		_scene.free()
 		_scene = null
@@ -26,6 +24,7 @@ func after_each() -> void:
 
 func _scene_for(controller: BattleController, speed: float = 0.0, in_tree: bool = true) -> BattleScene:
 	_scene = BattleScene.new()
+	_scene.sfx_requested.connect(_listener)
 	_scene.effects.speed = speed
 	if in_tree:
 		Engine.get_main_loop().root.add_child(_scene)
@@ -224,6 +223,7 @@ func test_relic_trigger_at_battle_start_is_heard_too() -> void:
 
 func test_building_the_scene_makes_no_sound() -> void:
 	_scene = BattleScene.new()
+	_scene.sfx_requested.connect(_listener)
 	Engine.get_main_loop().root.add_child(_scene)
 	_scene.setup(Hud.controller([&"fire_potion"], [&"anchor"]))
 	assert_eq(_heard, [])

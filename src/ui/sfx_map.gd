@@ -1,7 +1,7 @@
 class_name SfxMap
 extends RefCounted
 ## Bảng "cái gì xảy ra -> tên âm thanh" của màn chiến đấu (hàm thuần: không phát gì, không biết AudioManager).
-## Tên khớp tệp assets/audio/sfx/<tên>.ogg; BattleScene phát qua EventBus.sfx_requested.
+## Tên khớp tệp assets/audio/sfx/<tên>.ogg; BattleScene báo lên bằng tín hiệu sfx_requested (nơi sở hữu nối vào EventBus -> AudioManager).
 
 const CARD_PLAY := &"card_play"
 const HIT := &"hit"

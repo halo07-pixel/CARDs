@@ -21,6 +21,24 @@ func test_demo_scene_builds_a_playable_battle() -> void:
 	demo.free()
 
 
+func test_demo_forwards_scene_sounds_to_the_event_bus_including_after_a_restart() -> void:
+	var packed := load("res://scenes/battle/battle_demo.tscn") as PackedScene
+	var demo := packed.instantiate()
+	Engine.get_main_loop().root.add_child(demo)
+	var heard: Array = []
+	var listener := func(sfx_name: StringName) -> void: heard.append(String(sfx_name))
+	EventBus.sfx_requested.connect(listener)
+	demo.battle_scene.end_turn_button.pressed.emit()
+	assert_true(heard.has("end_turn"), "trận đầu: %s" % [heard])
+	demo.battle_scene.restart_requested.emit()
+	await Engine.get_main_loop().process_frame
+	heard.clear()
+	demo.battle_scene.end_turn_button.pressed.emit()
+	assert_true(heard.has("end_turn"), "trận dựng lại cũng nối vào EventBus: %s" % [heard])
+	EventBus.sfx_requested.disconnect(listener)
+	demo.free()
+
+
 func test_restart_builds_a_fresh_battle_on_the_next_frame() -> void:
 	var demo := (load("res://scenes/battle/battle_demo.tscn") as PackedScene).instantiate()
 	Engine.get_main_loop().root.add_child(demo)

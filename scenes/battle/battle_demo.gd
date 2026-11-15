@@ -32,5 +32,6 @@ func _start_battle() -> void:
 	battle_scene.effects.speed = EffectsConfig.NORMAL_SPEED
 	add_child(battle_scene)
 	battle_scene.setup(controller)
+	battle_scene.sfx_requested.connect(EventBus.sfx_requested.emit)  # AudioManager nghe EventBus và phát
 	battle_scene.restart_requested.connect(_start_battle, CONNECT_DEFERRED)  # tránh giải phóng cảnh trong tín hiệu của chính nó
 	controller.start_battle()
