@@ -60,8 +60,7 @@ var message_label: Label
 var result_overlay: ResultOverlayUI
 var play_zone: PlayZoneUI
 var target_arrow: TargetArrowUI
-var _dragged: CardInstance = null
-var _preview_unit: EnemyUnit = null
+var drag: CardDragHandler
 
 
 func _init() -> void:
@@ -164,6 +163,12 @@ func _init() -> void:
 	feedback = BattleFeedback.new(effects, effects_layer, hero_ui, enemy_uis, hand_ui, potion_belt_ui)
 	feedback.sfx_requested.connect(sfx_requested.emit)
 
+	drag = CardDragHandler.new(hand_ui, play_zone, target_arrow, enemy_uis)
+	drag.started.connect(_on_drag_began)
+	drag.rejected.connect(_on_drag_rejected)
+	drag.dropped.connect(_on_drag_dropped)
+	drag.finished.connect(_on_drag_finished)
+
 	result_overlay = ResultOverlayUI.new()
 	result_overlay.play_again_pressed.connect(func() -> void: restart_requested.emit())
 	add_child(result_overlay)
@@ -181,6 +186,7 @@ func setup(p_controller: BattleController) -> void:
 	teardown()
 	controller = p_controller
 	feedback.bind(controller)
+	drag.bind(controller)
 	for unit in controller.enemies:
 		var enemy_ui := EnemyUI.new()
 		enemy_ui.combatant_ui.effects = effects
@@ -228,8 +234,8 @@ func teardown() -> void:
 	hero_ui.unbind()
 	relic_bar_ui.unbind()
 	potion_belt_ui.unbind()
-	hand_ui.unbind()  # nếu đang kéo thẻ: HandUI báo drag_cancelled và _finish_drag dọn
-	_finish_drag()
+	hand_ui.unbind()  # nếu đang kéo thẻ: HandUI báo drag_cancelled và handler dọn
+	drag.unbind()
 	energy_ui.unbind()
 	for counter in [draw_counter, discard_counter, exhaust_counter]:
 		counter.unbind()
@@ -277,7 +283,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func is_dragging() -> bool:
-	return _dragged != null
+	return drag.is_dragging()
 
 
 func _place(control: Control, at: Vector2) -> Control:
@@ -341,77 +347,43 @@ func _apply(decision: PlayIntent.Decision) -> void:
 	_sync_targeting()
 
 
-## --- Kéo thả thẻ ---
+## --- Kéo thả thẻ (CardDragHandler lo; ở đây chỉ nối tín hiệu của HandUI vào và xử lý các việc ngoài phạm vi kéo) ---
 
 func _on_drag_started(card: CardInstance, pointer: Vector2) -> void:
-	if controller == null:
-		return
-	var reason := controller.play_rejection_reason(card)
-	if reason != &"":
-		show_message(RejectionText.for_reason(reason))
-		hand_ui.cancel_drag()  # không bắt đầu kéo thẻ không chơi được
-		feedback.card_rejected(card)
-		return
-	intent.cancel()  # bỏ lựa chọn bằng click (nếu có)
+	drag.start(card, pointer)
+
+
+func _on_drag_moved(card: CardInstance, pointer: Vector2) -> void:
+	drag.move(card, pointer)
+
+
+func _on_drag_ended(card: CardInstance, pointer: Vector2) -> void:
+	drag.end(card, pointer)
+
+
+func _on_drag_cancelled(card: CardInstance) -> void:
+	drag.cancel(card)
+
+
+## Sắp kéo: bỏ mọi lựa chọn bằng click, ẩn tooltip, xoá thông báo.
+func _on_drag_began(_card: CardInstance) -> void:
+	intent.cancel()
 	potion_intent.cancel()
 	potion_belt_ui.set_selected_slot(PotionIntent.NO_SLOT)  # ô potion hết viền sáng ngay
 	tooltip_ui.hide_tooltip()
 	show_message("")
-	_dragged = card
-	var single_target := card.data.target_mode == CardData.TargetMode.SINGLE_ENEMY
-	hand_ui.begin_drag(card, not single_target)
-	if single_target:
-		var valid := controller.valid_targets(card)
-		for enemy_ui in enemy_uis:
-			enemy_ui.set_targetable(valid.has(enemy_ui.unit))
-	else:
-		play_zone.show_zone()
-	_update_drag(pointer)
 
 
-func _on_drag_moved(card: CardInstance, pointer: Vector2) -> void:
-	if _dragged == card:
-		_update_drag(pointer)
+func _on_drag_rejected(card: CardInstance, reason: StringName) -> void:
+	show_message(RejectionText.for_reason(reason))
+	feedback.card_rejected(card)
 
 
-## Cập nhật theo con trỏ: thẻ nhắm -> mũi tên + xem trước số theo quái đang trỏ; thẻ khác -> thẻ bám theo + vùng thả.
-func _update_drag(pointer: Vector2) -> void:
-	var unit := EnemyHitTest.unit_at(pointer, enemy_uis)
-	if _dragged.data.target_mode == CardData.TargetMode.SINGLE_ENEMY:
-		var hovered := DropIntent.hover_target(_dragged, unit, controller)
-		target_arrow.show_arrow(hand_ui.card_anchor(_dragged), pointer, hovered != null)
-		if hovered != _preview_unit:
-			_preview_unit = hovered
-			hand_ui.set_preview_target(_dragged, hovered)
-	else:
-		hand_ui.move_drag(pointer)
-		play_zone.set_active(DropIntent.is_in_play_zone(pointer, DropIntent.DESIGN_SCREEN))
-
-
-func _on_drag_ended(card: CardInstance, pointer: Vector2) -> void:
-	if _dragged != card or controller == null:
-		return
-	var unit := EnemyHitTest.unit_at(pointer, enemy_uis)
-	var decision := DropIntent.decide(card, unit, DropIntent.is_in_play_zone(pointer, DropIntent.DESIGN_SCREEN), controller)
-	_finish_drag()
+func _on_drag_dropped(decision: PlayIntent.Decision) -> void:
 	_apply(decision)
 
 
-func _on_drag_cancelled(card: CardInstance) -> void:
-	if _dragged == card:
-		_finish_drag()
-
-
-## Dọn mọi dấu vết của lần kéo (mũi tên, vùng thả, xem trước, viền sáng). An toàn khi không có lần kéo nào.
-func _finish_drag() -> void:
-	var card := _dragged
-	_dragged = null
-	_preview_unit = null
-	target_arrow.hide_arrow()
-	play_zone.hide_zone()
-	if card != null:
-		hand_ui.set_preview_target(card, null)
-	hand_ui.end_drag()
+func _on_drag_finished() -> void:
 	if controller != null:
 		_sync_targeting()
 

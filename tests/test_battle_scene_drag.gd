@@ -347,3 +347,28 @@ func test_repeated_drags_do_not_leak_nodes() -> void:
 		_drag_to(card_ui, _enemy_center(scene, 0))
 		_drop(card_ui, Vector2(1600, 350))
 	assert_almost_eq(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT), orphans_before, 0.0001)
+
+
+func test_a_late_drag_event_after_teardown_starts_nothing() -> void:
+	var controller := _controller()
+	var scene := await _scene_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	scene.teardown()
+	scene.message_label.text = ""
+	scene._on_drag_started(card, Vector2(500, 300))
+	assert_false(scene.is_dragging(), "màn đã dỡ: không bắt đầu kéo bằng controller cũ")
+	assert_false(scene.hand_ui.is_dragging())
+	assert_false(scene.target_arrow.visible)
+	assert_eq(scene.message_label.text, "")
+
+
+func test_teardown_during_a_drag_cleans_everything() -> void:
+	var controller := _controller()
+	var scene := await _scene_in_tree(controller)
+	var card := controller.deck.get_pile(Deck.HAND)[0]
+	scene._on_drag_started(card, _enemy_center(scene, 0))
+	assert_true(scene.is_dragging())
+	scene.teardown()
+	assert_false(scene.is_dragging())
+	assert_false(scene.target_arrow.visible)
+	assert_false(scene.play_zone.visible)
