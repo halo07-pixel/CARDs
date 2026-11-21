@@ -17,6 +17,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	_listener = Callable()  # lambda bắt `self` lưu ở thành viên: buông để không tạo vòng tham chiếu (rò rỉ)
 	if _scene != null:
 		_scene.free()
 		_scene = null

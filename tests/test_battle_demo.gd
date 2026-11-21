@@ -2,6 +2,10 @@ extends "res://tests/test_case.gd"
 ## Scene demo (F6) phải dựng được một trận chơi được từ tệp .tscn thật.
 
 
+func after_each() -> void:
+	AudioManager.stop_all_sfx()  # tiếng do demo phát còn đang chạy lúc thoát sẽ làm rò rỉ đối tượng phát âm
+
+
 func test_demo_scene_builds_a_playable_battle() -> void:
 	var packed := load("res://scenes/battle/battle_demo.tscn") as PackedScene
 	assert_true(packed != null)

@@ -60,6 +60,12 @@ func play_sfx(sfx_name: StringName) -> bool:
 	return false  # pool đầy: bỏ qua tiếng này thay vì cắt tiếng khác
 
 
+## Dừng mọi tiếng SFX đang phát (vd. khi đổi màn). Không đụng tới nhạc.
+func stop_all_sfx() -> void:
+	for player in _sfx_players:
+		player.stop()
+
+
 func play_music(track_name: StringName) -> bool:
 	var stream := _find_stream(MUSIC_DIR, track_name)
 	if stream == null:

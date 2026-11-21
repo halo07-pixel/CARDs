@@ -275,7 +275,8 @@ func test_battle_victory_triggers_run_before_battle_ended_is_emitted() -> void:
 	var burning := _custom(&"burning", [Factory.trigger1(E.BATTLE_VICTORY, EffectData.create(T.HEAL, 6, G.SELF))])
 	controller.player.add_status(burning, 1)
 	var seen: Array = []
-	controller.battle_ended.connect(func(_victory: bool) -> void: seen.append(controller.player.hp))
+	var player := controller.player  # bắt `player` chứ KHÔNG bắt `controller`: lambda nối vào tín hiệu của controller mà bắt controller tạo vòng tham chiếu (rò rỉ)
+	controller.battle_ended.connect(func(_victory: bool) -> void: seen.append(player.hp))
 	controller.start_battle()
 	controller.play_card(Factory.inject(controller, Factory.strike(&"finisher", 6)), controller.enemies[0])
 	assert_eq(seen, [56], "người nhận battle_ended thấy máu ĐÃ được hồi")

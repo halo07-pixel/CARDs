@@ -39,7 +39,8 @@ func test_burning_blood_heals_after_victory_before_battle_ended() -> void:
 	var controller := _battle([&"burning_blood"], _one(6), false)
 	controller.player.take_damage(30)
 	var seen: Array = []
-	controller.battle_ended.connect(func(_victory: bool) -> void: seen.append(controller.player.hp))
+	var player := controller.player  # bắt `player` chứ KHÔNG bắt `controller`: lambda nối vào tín hiệu của controller mà bắt controller tạo vòng tham chiếu (rò rỉ)
+	controller.battle_ended.connect(func(_victory: bool) -> void: seen.append(player.hp))
 	controller.start_battle()
 	controller.play_card(Factory.inject(controller, Factory.strike(&"finisher", 6)), controller.enemies[0])
 	assert_eq(seen, [56], "người nhận battle_ended thấy máu ĐÃ được hồi 6")

@@ -7,9 +7,13 @@ const UiInput := preload("res://tests/ui_input.gd")
 func test_is_built_once_with_icon_and_fallback_children() -> void:
 	var badge := BadgeUI.new()
 	assert_eq(badge.get_child_count(), 2, "không bị dựng nhân đôi qua lớp con")
-	assert_eq(PotionSlotUI.new().get_child_count(), 2)
-	assert_eq(RelicIconUI.new().get_child_count(), 2)
+	var slot := PotionSlotUI.new()
+	var relic := RelicIconUI.new()
+	assert_eq(slot.get_child_count(), 2)
+	assert_eq(relic.get_child_count(), 2)
 	badge.free()
+	slot.free()
+	relic.free()
 
 
 func test_missing_icon_falls_back_to_three_upper_case_letters() -> void:

@@ -18,6 +18,7 @@ func after_each() -> void:
 		if is_instance_valid(node):
 			node.free()
 	_nodes = []
+	_handler = null  # buông RefCounted có lambda bắt `self` nối vào tín hiệu của nó: nếu giữ lại sẽ tạo vòng tham chiếu (rò rỉ)
 	_enemy_uis = []
 
 
