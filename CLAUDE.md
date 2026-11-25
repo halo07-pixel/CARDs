@@ -19,12 +19,13 @@
 - Lõi (`src/core`, `src/data`, `src/sim`) không dùng node/UI. Enum lưu số nguyên trong `.tres` -> **chỉ thêm vào cuối enum**.
 
 ## Kiểm chứng (mỗi tính năng)
-- Viết test headless (`tests/test_*.gd`); `bash tools/run_tests.sh` phải xanh. Dữ liệu mới có test hợp lệ + tham chiếu chéo.
+- Viết test headless (`tests/test_*.gd`); `bash tools/run_tests.sh` phải xanh (bộ chạy nghiêm ngặt: `SCRIPT ERROR`, lỗi biên dịch và rò rỉ khi thoát đều là FAIL; `bash tools/check_runner.sh` tự kiểm bộ chạy). Dữ liệu mới có test hợp lệ + tham chiếu chéo. Test không được để lại vòng tham chiếu (lambda bắt `self`/emitter nối vào tín hiệu của chính nó) hay node chưa `free()`.
 - Chạy `tools/simulate_battles.gd` (nhiều cấu hình): **0 vi phạm bất biến, 0 cảnh báo**.
-- Phá code cố ý ở logic quan trọng và xác nhận có test fail; lô nhỏ, khôi phục + `cmp` byte sau mỗi lô. Báo cáo cả những lần phá **không** bị bắt (và vì sao).
+- Phá code cố ý ở logic quan trọng và xác nhận có test fail; lô nhỏ (<= 8-10 lần/lệnh), khôi phục sau mỗi lần và chạy lại toàn bộ test; nếu lệnh bị ngắt giữa chừng thì khôi phục file ngay. Báo cáo cả những lần phá **không** bị bắt (và vì sao); vá bằng test hoặc xóa code thừa.
+- Refactor: giữ nguyên bề mặt công khai mà test dùng, so **ảnh chụp tất định trước/sau** (`tools/capture_hud.gd`, `capture_interaction.gd`) phải giống từng byte.
 
 ## Git
-- Nhánh `claude/phase-X-Y-tên`; commit `<type>: <mô tả>` (`feat/fix/refactor/docs/test/chore/perf/ci`); **không force-push**; **đẩy sau mỗi mốc** (sandbox có thể reset); chỉ gộp `main` khi người dùng nói.
+- Nhánh `claude/phase-X-Y-tên` tạo từ `origin/main` (`git fetch origin && git checkout -B ... origin/main`: nhánh `main` cục bộ không tự cập nhật vì gộp qua API); commit `<type>: <mô tả>` (`feat/fix/refactor/docs/test/chore/perf/ci`); **không force-push**; **đẩy sau mỗi mốc** (sandbox có thể reset); chỉ gộp `main` khi người dùng nói.
 - Đẩy/gộp qua API: `tools/gh_push.py`, `tools/gh_merge.py`. **Không ghi token vào file/commit/log.**
 
 ## Báo cáo
